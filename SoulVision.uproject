@@ -12,5 +12,11 @@
 				"AIModule"
 			]
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "UnrealEnginePython",
+			"Enabled": true
+		}
 	]
 }
