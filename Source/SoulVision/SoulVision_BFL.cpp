@@ -11,10 +11,25 @@ bool USoulVision_BFL::SaveStringTextToFile(
 ) {
 
 	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	//Only allow relative file paths
+	if (!FPaths::IsRelative(SaveDirectory)) {
+		return false;
+	}
+
+	//Data storage folder
+	FString DataFolderLocation = "/Data";
+
+	//Get absolute path to save directory
+	SaveDirectory = FPaths::ConvertRelativePathToFull(FPaths::GameContentDir()+DataFolderLocation, SaveDirectory);
+
+	//Directory exists?
 	if (!PlatformFile.DirectoryExists(*SaveDirectory))
 	{
+		//Create directory if it doesn't exist
 		PlatformFile.CreateDirectory(*SaveDirectory);
 
+		//If directory couldn't be created, then fail
 		if (!PlatformFile.DirectoryExists(*SaveDirectory))
 		{
 			return false;
@@ -22,8 +37,7 @@ bool USoulVision_BFL::SaveStringTextToFile(
 	}
 
 	//get complete file path
-	SaveDirectory += "/";
-	SaveDirectory += FileName;
+	SaveDirectory = FPaths::ConvertRelativePathToFull(SaveDirectory, FileName);
 
 	//No over writing?
 	if (AllowOverWriting || !PlatformFile.FileExists(*SaveDirectory))
