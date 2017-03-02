@@ -1,3 +1,3 @@
 # SoulVision
 
-A really awesome game in development made using Unreal engine 4 and tensorflow.
+A really awesome game in development made using Unreal engine 4 and TensorFlow.
