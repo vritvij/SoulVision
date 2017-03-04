@@ -230,7 +230,7 @@ PyObject *py_unreal_engine_find_struct(PyObject * self, PyObject * args) {
 		return NULL;
 	}
 
-	UStruct *u_struct = FindObject<UStruct>(ANY_PACKAGE, UTF8_TO_TCHAR(name));
+	UScriptStruct *u_struct = FindObject<UScriptStruct>(ANY_PACKAGE, UTF8_TO_TCHAR(name));
 
 	if (!u_struct)
 		return PyErr_Format(PyExc_Exception, "unable to find struct %s", name);
@@ -254,7 +254,7 @@ PyObject *py_unreal_engine_load_struct(PyObject * self, PyObject * args) {
 	if (filename)
 		t_filename = UTF8_TO_TCHAR(filename);
 
-	UObject *u_struct = StaticLoadObject(UStruct::StaticClass(), NULL, UTF8_TO_TCHAR(name), t_filename);
+	UObject *u_struct = StaticLoadObject(UScriptStruct::StaticClass(), NULL, UTF8_TO_TCHAR(name), t_filename);
 
 	if (!u_struct)
 		return PyErr_Format(PyExc_Exception, "unable to find struct %s", name);
@@ -321,7 +321,6 @@ PyObject *py_unreal_engine_find_object(PyObject * self, PyObject * args) {
 		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
 	Py_INCREF(ret);
 	return (PyObject *)ret;
-
 }
 
 
@@ -376,6 +375,35 @@ PyObject *py_unreal_engine_new_object(PyObject * self, PyObject * args) {
 	return (PyObject *)ret;
 }
 
+PyObject *py_unreal_engine_get_mutable_default(PyObject * self, PyObject * args) {
+
+	PyObject *obj;
+	if (!PyArg_ParseTuple(args, "O|Os:new_object", &obj)) {
+		return NULL;
+	}
+
+	if (!ue_is_pyuobject(obj)) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	}
+
+	ue_PyUObject *py_obj = (ue_PyUObject *)obj;
+
+	if (!py_obj->ue_object->IsA<UClass>())
+		return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
+
+	UClass *obj_class = (UClass *)py_obj->ue_object;
+
+	UObject *mutable_object = GetMutableDefault<UObject>(obj_class);
+	if (!mutable_object)
+		return PyErr_Format(PyExc_Exception, "unable to create object");
+
+	ue_PyUObject *ret = ue_get_python_wrapper(mutable_object);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
 
 PyObject *py_unreal_engine_new_class(PyObject * self, PyObject * args) {
 
@@ -408,7 +436,7 @@ PyObject *py_unreal_engine_new_class(PyObject * self, PyObject * args) {
 	return (PyObject *)ret;
 }
 
-PyObject *py_unreal_engine_classes(PyObject * self, PyObject * args) {
+PyObject *py_unreal_engine_all_classes(PyObject * self, PyObject * args) {
 
 	PyObject *ret = PyList_New(0);
 
@@ -422,91 +450,224 @@ PyObject *py_unreal_engine_classes(PyObject * self, PyObject * args) {
 }
 
 PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObject * args) {
-	PyObject *py_callable = nullptr;
-	PyObject *py_params = nullptr;
-
-	Py_ssize_t TupleSize = PyTuple_Size(args);
-
-	if (TupleSize == 1)
-	{
-		//function with no params
-		if (!PyArg_ParseTuple(args, "O:create_and_dispatch_when_ready", &py_callable))
-		{
-			UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple without params failed"));
-			unreal_engine_py_log_error();
-			return NULL;
-		}
+	PyObject *py_callable;
+	if (!PyArg_ParseTuple(args, "O:create_and_dispatch_when_ready", &py_callable)) {
+		return NULL;
 	}
-	else
-	{
-		//function with params
-		if (!PyArg_ParseTuple(args, "OO:create_and_dispatch_when_ready", &py_callable, &py_params))
-		{
-			UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple with params failed"));
-			unreal_engine_py_log_error();
-
-			//Not an acceptable format, exit
-			return NULL;
-		}
-	}
-
-	//UE_LOG(LogPython, Log, TEXT("Start Task in Game thread? %d"), IsInGameThread());
 
 	if (!PyCallable_Check(py_callable))
-	{
 		return PyErr_Format(PyExc_TypeError, "argument is not callable");
-	}
 
 	Py_INCREF(py_callable);
-	if (py_params)
-	{
-		Py_INCREF(py_params);
-	}
 
-	const PyObject* py_callable_s = py_callable;
-	const PyObject* py_params_s = py_params;
-	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&, py_callable_s, py_params_s]() {
-		//UE_LOG(LogPython, Log, TEXT("In task graph, are in game thread? %d"), IsInGameThread());
-
+	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
 		FScopePythonGIL gil;
-		PyObject *ret = nullptr;
-		PyObject *py_tuple_params = nullptr;
-		
-		//do we have parameters?
-		if (py_params_s)
-		{
-			py_tuple_params = PyTuple_New(1);
-			PyTuple_SetItem(py_tuple_params, 0, (PyObject*)py_params_s);
-			ret = PyObject_CallObject((PyObject*)py_callable_s, py_tuple_params);
-		}
-		else
-		{
-			ret = PyObject_CallObject((PyObject*)py_callable_s, nullptr);
-		}
-
-		//did we get a valid return from our call?
-		if (ret) 
-		{
+		PyObject *ret = PyObject_CallObject(py_callable, nullptr);
+		if (ret) {
 			Py_DECREF(ret);
 		}
-		else 
-		{
+		else {
 			unreal_engine_py_log_error();
 		}
-		
-		if (py_params_s)
-		{
-			Py_DECREF(py_params_s);
-		}
-		if (py_tuple_params)
-		{
-			Py_DECREF(py_tuple_params);
-		}
-		Py_DECREF(py_callable_s);
+		Py_DECREF(py_callable);
 	}, TStatId(), nullptr, ENamedThreads::GameThread);
+
+	FTaskGraphInterface::Get().WaitUntilTaskCompletes(task);
+	// TODO Implement signal triggering in addition to WaitUntilTaskCompletes
+	// FTaskGraphInterface::Get().TriggerEventWhenTaskCompletes
 
 	Py_INCREF(Py_None);
 	return Py_None;
 }
+
+PyObject *py_unreal_engine_get_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	if (!GEngine->GameViewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:get_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	FViewport *viewport = GEngine->GameViewport->Viewport;
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_get_viewport_size(PyObject *self, PyObject * args) {
+
+	if (!GEngine->GameViewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	FViewport *viewport = GEngine->GameViewport->Viewport;
+	PyObject *tuple_size = PyTuple_New(2);
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+
+	return tuple_size;
+}
+
+#if WITH_EDITOR
+PyObject *py_unreal_engine_editor_get_active_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	FViewport *viewport = GEditor->GetActiveViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:editor_get_active_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_editor_get_active_viewport_size(PyObject *self, PyObject * args) {
+
+
+	FViewport *viewport = GEditor->GetActiveViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *tuple_size = PyTuple_New(2);
+
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+
+	return tuple_size;
+}
+
+PyObject *py_unreal_engine_editor_get_pie_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	FViewport *viewport = GEditor->GetPIEViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:editor_get_pie_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_editor_get_pie_viewport_size(PyObject *self, PyObject * args) {
+
+
+	FViewport *viewport = GEditor->GetPIEViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *tuple_size = PyTuple_New(2);
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+	return tuple_size;
+}
+#endif
 
 

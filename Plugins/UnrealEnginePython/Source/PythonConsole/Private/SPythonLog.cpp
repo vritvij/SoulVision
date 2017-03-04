@@ -46,10 +46,19 @@ public:
 			]);
 	}
 
+	void SetPythonBox(SPythonConsoleInputBox *box) {
+		SPythonConsoleEditableText *PythonEditableText = (SPythonConsoleEditableText *)EditableText.Get();
+		box->HistoryPosition = 0;
+		PythonEditableText->PythonConsoleInputBox = box;
+	}
+
 private:
 	class SPythonConsoleEditableText : public SEditableText
 	{
 	public:
+
+		SPythonConsoleInputBox *PythonConsoleInputBox;
+
 		SLATE_BEGIN_ARGS(SPythonConsoleEditableText) {}
 		/** The text that appears when there is nothing typed into the search box */
 		SLATE_ATTRIBUTE(FText, HintText)
@@ -80,6 +89,22 @@ private:
 			if (InKeyEvent.GetKey() == EKeys::Tilde)
 			{
 				return FReply::Unhandled();
+			}
+			else if (InKeyEvent.GetKey() == EKeys::Up) {
+				if (PythonConsoleInputBox->HistoryPosition > 0) {
+					PythonConsoleInputBox->HistoryPosition--;
+					this->SetText(FText::FromString(PythonConsoleInputBox->History[PythonConsoleInputBox->HistoryPosition]));
+				}
+
+				return FReply::Handled();
+			}
+			else if (InKeyEvent.GetKey() == EKeys::Down) {
+				if (PythonConsoleInputBox->HistoryPosition < PythonConsoleInputBox->History.Num() - 1) {
+					PythonConsoleInputBox->HistoryPosition++;
+					this->SetText(FText::FromString(PythonConsoleInputBox->History[PythonConsoleInputBox->HistoryPosition]));
+				}
+
+				return FReply::Handled();
 			}
 			else
 			{
@@ -128,7 +153,7 @@ SPythonConsoleInputBox::SPythonConsoleInputBox()
 	: bIgnoreUIUpdate(false)
 {
 	FScopePythonGIL gil;
-	
+
 }
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -144,6 +169,10 @@ void SPythonConsoleInputBox::Construct(const FArguments& InArgs)
 		.HintText(NSLOCTEXT("PythonConsole", "TypeInConsoleHint", "Enter python command"))
 
 		];
+
+	SPythonConsoleEditableTextBox *TextBox = (SPythonConsoleEditableTextBox *)InputText.Get();
+	TextBox->SetPythonBox(this);
+	IsMultiline = false;
 }
 void SPythonConsoleInputBox::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
@@ -170,6 +199,9 @@ void SPythonConsoleInputBox::OnTextCommitted(const FText& InText, ETextCommit::T
 			// re-entered.  We want to make sure the text string is empty on re-entry, so we'll clear it out
 			const FString ExecString = InText.ToString();
 
+			this->History.Add(ExecString);
+			this->HistoryPosition = this->History.Num();
+
 			UE_LOG(LogTemp, Log, TEXT(">>> %s"), *ExecString);
 
 			// Clear the console input area
@@ -180,9 +212,29 @@ void SPythonConsoleInputBox::OnTextCommitted(const FText& InText, ETextCommit::T
 			// Here run the python code
 			//
 			FUnrealEnginePythonModule &PythonModule = FModuleManager::GetModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
-			PythonModule.RunString(TCHAR_TO_UTF8(*ExecString));
 
-			
+			if (IsMultiline) {
+				if (ExecString.StartsWith(" ")) {
+					MultilineString += FString("\n") + ExecString;
+				}
+				else {
+					IsMultiline = false;
+					PythonModule.RunString(TCHAR_TO_UTF8(*MultilineString));
+				}
+			}
+			else if (ExecString.EndsWith(":")) {
+				IsMultiline = true;
+				MultilineString = ExecString;
+			}
+			else {
+				PythonModule.RunString(TCHAR_TO_UTF8(*ExecString));
+			}
+
+		}
+		else if (IsMultiline) {
+			IsMultiline = false;
+			FUnrealEnginePythonModule &PythonModule = FModuleManager::GetModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
+			PythonModule.RunString(TCHAR_TO_UTF8(*MultilineString));
 		}
 
 	}
