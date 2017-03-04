@@ -4,9 +4,7 @@
 
 #include "PythonComponent.generated.h"
 
-
-
-UCLASS(ClassGroup = (Python), meta = (BlueprintSpawnableComponent))
+UCLASS(BlueprintType, Blueprintable, ClassGroup = (Python), meta = (BlueprintSpawnableComponent))
 class UPythonComponent : public UActorComponent
 {
 	GENERATED_BODY()

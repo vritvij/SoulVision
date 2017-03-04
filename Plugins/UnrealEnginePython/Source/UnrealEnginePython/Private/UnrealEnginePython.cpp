@@ -61,28 +61,6 @@ bool FUnrealEnginePythonModule::PythonGILAcquire() {
 	return true;
 }
 
-static void UESetupPythonInterpeter(bool verbose) {
-	unreal_engine_init_py_module();
-
-	PyObject *py_sys = PyImport_ImportModule("sys");
-	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
-
-	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
-
-	char *zip_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip")));
-	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
-	PyList_Insert(py_path, 0, py_zip_path);
-
-	char *scripts_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts")));
-	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
-	PyList_Insert(py_path, 0, py_scripts_path);
-
-	if (verbose) {
-		UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
-		UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
-	}
-}
-
 void FUnrealEnginePythonModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
@@ -97,11 +75,43 @@ void FUnrealEnginePythonModule::StartupModule()
 
 	PyEval_InitThreads();
 
-	UESetupPythonInterpeter(true);
+	unreal_engine_init_py_module();
+
+	PyObject *py_sys = PyImport_ImportModule("sys");
+	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
+
+	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
+
+	char *zip_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("python35.zip")));
+	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
+	PyList_Insert(py_path, 0, py_zip_path);
+
+	char *scripts_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts")));
+	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
+	PyList_Insert(py_path, 0, py_scripts_path);
+
+	/* UnrealEnginePython Plugin Content/Scripts path */
+	FString PluginRoot = IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	PyObject *py_plugin_scripts_path = PyUnicode_FromString(TCHAR_TO_UTF8(*ScriptsPath));
+	PyList_Insert(py_path, 0, py_plugin_scripts_path);
+
+	/* add the plugin paths - windows only */
+	FString PythonHome = FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64");
+	char *python_path = TCHAR_TO_UTF8(*PythonHome);
+	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(*PythonHome, "Lib/site-packages"));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(site_path));
+
+	UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
+	UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
 
 	PyObject *main_module = PyImport_AddModule("__main__");
 	main_dict = PyModule_GetDict(main_module);
 	local_dict = main_dict;// PyDict_New();
+
+	//import upymodule_importer
+	PyImport_ImportModule("upymodule_importer");
 
 	if (PyImport_ImportModule("ue_site")) {
 		UE_LOG(LogPython, Log, TEXT("ue_site Python module successfully imported"));
@@ -110,6 +120,8 @@ void FUnrealEnginePythonModule::StartupModule()
 		// TODO gracefully manage the error
 		unreal_engine_py_log_error();
 	}
+
+	
 
 #if WITH_EDITOR
 	// register commands (after importing ue_site)
@@ -150,9 +162,8 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 	{
 		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
 	}
-#if PY_MAJOR_VERSION >= 3
 	FILE *fd = nullptr;
-
+	
 #if PLATFORM_WINDOWS
 	if (fopen_s(&fd, full_path, "r") != 0) {
 		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
@@ -165,7 +176,6 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 		return;
 	}
 #endif
-
 	PyObject *eval_ret = PyRun_File(fd, full_path, Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
 	fclose(fd);
 	if (!eval_ret) {
@@ -173,85 +183,45 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 		return;
 	}
 	Py_DECREF(eval_ret);
-#else
-	// damn, this is horrible, but it is the only way i found to avoid the CRT error :(
-	FString command = FString::Printf(TEXT("execfile(\"%s\")"), UTF8_TO_TCHAR(full_path));
-	PyObject *eval_ret = PyRun_String(TCHAR_TO_UTF8(*command), Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
-	if (!eval_ret) {
-		unreal_engine_py_log_error();
-		return;
-	}
-#endif
-
 }
 
-// run a python script in a new sub interpreter (useful for unit tests)
-void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
-	FScopePythonGIL gil;
-	char *full_path = filename;
-	if (!FPaths::FileExists(filename))
-	{
-		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
+void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
+{
+	PythonGILAcquire();
+
+	PyObject *py_sys = PyImport_ImportModule("sys");
+	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
+	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
+
+	char *charPath = TCHAR_TO_UTF8(*Path);
+	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
+	PyList_Insert(py_path, 0, py_scripts_path);
+
+	PythonGILRelease();
+}
+
+void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginName)
+{
+	//Add plugin Content/Script to sys.path
+	FString PluginRoot = IPluginManager::Get().FindPlugin(PluginName)->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	FUnrealEnginePythonModule::Get().AddPathToSysPath(ScriptsPath);
+	UE_LOG(LogPython, Log, TEXT("Added %s Plugin Content/Scripts (%s) to sys.path"), *PluginName, *ScriptsPath);
+
+	//run import interpreter on upythonmodule.json inside scripts
+	FString PyModulePath = FString::Printf(TEXT("%s/upymodule.json"), *ScriptsPath);
+	FString RunImport = FString::Printf(TEXT("import upymodule_importer\nupymodule_importer.parseJson('%s')"), *PyModulePath);
+
+ 	PythonGILAcquire();
+
+	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport)) == 0) {
+		UE_LOG(LogPython, Log, TEXT("%s Plugin upymodule.json parsed"), *PluginName);
 	}
-#if PY_MAJOR_VERSION >= 3
-	FILE *fd = nullptr;
-
-#if PLATFORM_WINDOWS
-	if (fopen_s(&fd, full_path, "r") != 0) {
-		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
-		return;
-	}
-#else
-	fd = fopen(full_path, "r");
-	if (!fd) {
-		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
-		return;
-	}
-#endif
-
-	PyThreadState *_main = PyThreadState_Get();
-
-	PyThreadState *py_new_state = Py_NewInterpreter();
-	if (!py_new_state) {
-		UE_LOG(LogPython, Error, TEXT("Unable to create new Python interpreter"));
-		return;
-	}
-	PyThreadState_Swap(nullptr);
-	PyThreadState_Swap(py_new_state);
-
-	UESetupPythonInterpeter(false);
-
-	PyObject *m = PyImport_AddModule("__main__");
-	if (m == NULL) {
-		UE_LOG(LogPython, Error, TEXT("Unable to create new global dict"));
-		Py_EndInterpreter(py_new_state);
-		PyThreadState_Swap(_main);
-		return;
-	}
-	PyObject *global_dict = PyModule_GetDict(m);
-
-	PyObject *eval_ret = PyRun_File(fd, full_path, Py_file_input, global_dict, global_dict);
-	fclose(fd);
-	if (!eval_ret) {
+	else {
 		unreal_engine_py_log_error();
-		Py_EndInterpreter(py_new_state);
-		PyThreadState_Swap(_main);
-		return;
 	}
-	Py_DECREF(eval_ret);
-#else
-	// damn, this is horrible, but it is the only way i found to avoid the CRT error :(
-	FString command = FString::Printf(TEXT("execfile(\"%s\")"), UTF8_TO_TCHAR(full_path));
-	PyObject *eval_ret = PyRun_String(TCHAR_TO_UTF8(*command), Py_file_input, global_dict, global_dict);
-	if (!eval_ret) {
-		unreal_engine_py_log_error();
-		Py_EndInterpreter(py_new_state);
-		PyThreadState_Swap(_main);
-		return;
-	}
-#endif
-	Py_EndInterpreter(py_new_state);
-	PyThreadState_Swap(_main);
+
+	PythonGILRelease();
 }
 
 #undef LOCTEXT_NAMESPACE

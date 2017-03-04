@@ -1,13 +1,17 @@
 # UnrealEnginePython
 Embed Python in Unreal Engine 4
 
+## Fork Notes
+
+This fork is meant to encapsulate python + pip + scripts fully in the plugin and to allow dependency plugins to be built on top of the python plugin. Specifically it means adding automatic pip dependency resolution and automatic sys.path additions such that the resulting two plugins can be fully drag and dropped into a new project.
+
 # How and Why ?
 
 This is a plugin embedding a whole Python VM (versions 3.x [the default and suggested one] and 2.7) In Unreal Engine 4 (both the editor and runtime).
 
 The Python VM tries to give easy access to all of the UE4 internal api + its reflection system. This means you can use the plugin to write other plugins, to automate tasks and to implement gameplay elements.
 
-It is not meant as a way to avoid blueprints or c++ but as a good companion to them (albeit reducing the amount of c++ required for coding a game could be an interesting thing ;). If your development pipeline is already python-based (Maya, Blender, ...), this plugin could easily help you in intgrating unreal into it.
+It is not meant as a way to avoid blueprints or c++ but as a good companion to them (albeit reducing the amount of c++ required for coding a game could be an interesting thing ;)
 
 Another funny feature is that you can change your python code even after the project has been packaged. You can potentially build a completely new game from an already packaged one.
 
@@ -23,7 +27,7 @@ The currently supported Unreal Engine versions are 4.12, 4.13 and 4.14
 
 Check in the releases page (https://github.com/20tab/UnrealEnginePython/releases) if there is a binary version that matches your configuration (otherwise open an issue asking us for it [please specify the python version too]) and download it.
 
-Binary releases are in two forms: standard and embedded. Standard uses the python installation of your system, so ensure the python installation directory is in your system PATH environment variable (otherwise you will get an error while loading your project). Embedded releases include an embedded python installation so you do not need to have python in your system.
+Binary releases includes an embedded python version, so you do not need to install it in the system.
 
 Create (if it does not already exist) a Plugins directory in your project root directory (at the same level of Content/ and the .uproject file) and unzip the plugin into it. If your project is named FooBar you will end with FooBar/Plugins/UnrealEnginePython.
 
@@ -31,57 +35,39 @@ Open your project and go to the Edit/Plugins menu. Go to the bottom and under "P
 
 Restart your project and you should see the PythonConsole under the "Window/Developer Tools" menu
 
-Binary releases are mainly useful for editor scripting, if you want to package your project for distribution and you need the python runtime, you need a source release (see below).
-
-If instead, you want to package your project without python, just remember to change the UnrealEnginePython.uplugin to have this line: https://github.com/20tab/UnrealEnginePython/blob/master/UnrealEnginePython.uplugin#L20 set as "Editor" instead of "Runtime"
-
 # Installation from sources on Windows (64 bit)
 
-Currently python3.6, python3.5 and python2.7 are supported. It is highly suggested to have a python system wide installation (by default the official python distributions are installed in user's home directory) with the PATH environment variable including it (if you change the PATH variable remember to reboot the system before running the build procedure, this is not strictly required but will ensure the PATH is updated). If the PATH variable does not contain the path of your python installation you will see a warning in the build log/output.
+The installation is pretty long (and boring) as you do not want the final users of the product to be required to install python, so we need to use the 'embedded python distribution' (available for windows in the official python site). Unfortunately the embedded distribution does not contain the python development headers so we need the official system-wide installation too.
 
-Download a source official release or simply clone the repository for latest updates:
+* install Unreal Engine and Python 3.5 as a system user
+* run the unreal editor and create a new blank c++ project (NOT a blueprint one, otherwise visual studio will not be initialized)
+* once the project is setup, close both unreal and visual studio
+* move to the project directory (you can right click the project from the epic launcher and choose 'show in explorer')
+* create a 'Plugins' directory into the project directory
+* move into the just created Plugins directory and clone the repository:
 
 ```sh
 git clone https://github.com/20tab/UnrealEnginePython
 ```
 
-By default the build procedure will try to discover your python installation looking at hardcoded known paths. If you want to specify a custom python installation (or the autodetection simply fails) you can change it in the Source/UnrealEnginePython/UnrealEnginePython.Build.cs file at this line: https://github.com/20tab/UnrealEnginePython/blob/master/Source/UnrealEnginePython/UnrealEnginePython.Build.cs#L10
-
-
-choose a project you want to install the plugin into, open the file explorer (you can do it from the epic launcher too) and:
-
-* create a Plugins/ directory (if it does not exist) in your project and copy the directory UnrealEnginePython into it
-* from the file explorer right click on the project main file and choose 'generate visual studio project files'
-* open visual studio, you should now see Plugins/UnrealEnginePython in your solution explorer
+* from the explorer right click on the project main file and choose 'generate visual studio project files'
+* open again visual studio, you should now see Plugins/UnrealEnginePython in your solution explorer
+* before running the plugin build process you need to copy development headers and libs in the plugin directory (Plugins/UnrealEnginePython).
+* create the directory Plugins/UnrealEnginePython/python35 (this is where the build script expects to find headers and static libs)
+* copy "C:/Program Files/Python35/include" and "C:/Program Files/Python35/libs" into Plugins/UnrealEnginePython/python35
 * run the compilation from visual studio
-* once the compilation ends, double check the python libraries can be found by the plugin (they must be in the system PATH like previously described, or brutally copy them in the Binaries/Win64 directory of the just built plugin)
+* once the compilation ends, copy the python35.dll (from "C:/Program Files/Python35" or from the embeded distribution) into the Binaries/Win64 directory of your project (you will find the plugin dll too in this directory)
 * now you can re-run the unreal engine editor
 
-If all goes well, you will see 'Python Console' in the "Window/Developer Tools" menu
+If all goes well, open the output log and search for the string "Python". You should see the Python VM initialization message. It means your editor has now full python support.
 
-If you want to package your project (it is required only if you need to have a python VM at runtime, read: your game logic is programmed in python) ensure the Content/Scripts/ue_site.py file is in your project (it can be empty). At the end of the build procedure ensure to copy all of your required python scripts in the final directory. Remember that unless you add an embedded python in your final build, the final users of your project will require python installed in his/her system.
-
-If you want to package without python, just remember to change the UnrealEnginePython.uplugin to have this line: https://github.com/20tab/UnrealEnginePython/blob/master/UnrealEnginePython.uplugin#L20 set as "Editor" instead of "Runtime"
-
-# Binaries installation on MaxOSX
-
-Check in the releases page (https://github.com/20tab/UnrealEnginePython/releases) if there is a binary version that matches your configuration (otherwise open an issue asking us for it [please specify the python version too]) and download it.
-
-Binary releases for MacOSX expects an official python installation (the packages you get from python.org).
-
-Create (if it does not already exist) a Plugins directory in your project root directory (at the same level of Content/ and the .uproject file) and unzip the plugin into it. If your project is named FooBar you will end with FooBar/Plugins/UnrealEnginePython.
-
-Open your project and go to the Edit/Plugins menu. Go to the bottom and under "Project/Scripting Languages" enable UnrealEnginePython.
-
-Restart your project and you should see the PythonConsole under the "Window/Developer Tools" menu
-
-Binary releases are mainly useful for editor scripting, if you want to package your project for distribution and you need the python runtime, you need a source release (see below).
-
-If instead, you want to package your project without python, just remember to change the UnrealEnginePython.uplugin to have this line: https://github.com/20tab/UnrealEnginePython/blob/master/UnrealEnginePython.uplugin#L20 set as "Editor" instead of "Runtime"
+To use python 2, follow the same approach but with a python27 directory (instead of python35) and change the pythonHome variable in /Source/UnrealEnginePython/UnrealEnginePython.Build.cs to "python27"
 
 # Installation from sources on MacOSX
 
-* install the latest official python distribution from python.org (the installation will end in the "/Library/Frameworks/Python.framework/Versions/X.Y" directory).
+On the Mac the installation is easier, as the final user is currently forced to install python on its system (there are obviously dozens of workarounds but at this stage of the project we prefer focusing on the api).
+
+* install the latest official python distribution from python.org (the installation will end in the "/Library/Frameworks/Python.framework/Versions/3.5" directory).
 * create a new unreal engine blank c++ project (NOT a blueprint one, otherwise XCode will not be initialized)
 * create a Plugins directory in the project directory
 * move to the Plugins directory and clone the plugin repository
@@ -94,9 +80,8 @@ git clone https://github.com/20tab/UnrealEnginePython
 * restart the editor and a popup should appear asking your for confirmation of the build of the plugin.
 * Once the plugin is built, go to the output log console and filter for 'Python'. You should see the Python VM banner.
 
-The build procedure will try to automatically discover python installations. If you need custom paths, just edit here:
 
-https://github.com/20tab/UnrealEnginePython/blob/master/Source/UnrealEnginePython/UnrealEnginePython.Build.cs#L10
+For python 2 just change the pythonHome variable in /Source/UnrealEnginePython/UnrealEnginePython.Build.cs to "python27"
 
 Upgrading on MacOSX
 -------------------
@@ -109,10 +94,10 @@ git pull
 ```
 
 * move to UnrealEnginePython/Binaries/Mac from the Plugin directory
-* remove the plugin libraries to warn UnrealEngine to recompile the plugin
+* remove the plugin library UE4Editor-UnrealEnginePython.dylib to warn UnrealEngine to recompile the plugin
 
 ```sh
-rm *.dylib
+rm UE4Editor-UnrealEnginePython.dylib
 ```
 
 * restart the editor and a popup should appear asking your for confirmation of the build of the plugin.
@@ -152,16 +137,6 @@ At the next run the build procedure wil be started again.
 Currently only Windows, MacOSX and Linux are supported. We are investigating Android support too via the kivy project.
 
 # Using Python with Unreal Engine (finally)
-
-If your objective is to script the editor, you can directly jump to
-
-https://github.com/20tab/UnrealEnginePython/tree/master/docs
-
-and
-
-https://github.com/20tab/UnrealEnginePython/tree/master/examples
-
-The first directory contains the official documentation for specific areas, while the second one is a collection of python scripts doing any sort of 'magic' with your project ;)
 
 Creating a new blueprint class managed by python
 ------------------------------------------------
@@ -465,8 +440,8 @@ vec = self.uobject.GetActorLocation()
 
 Reflection based functions are those in camelcase (or with the first capital letter). Native functions instead follow the python style, with lower case, underscore-as-separator function names.
 
-The automagic UClass, UStruct and UEnums mappers
-------------------------------------------------
+The automagic UClass and UEnums mappers
+---------------------------------------
 
 Instead of doing a gazilion of unreal_engine.find_class(name) calls, the plugin adds a 'magic' module called unreal_engine.classes. It allows to import unreal classes like python classes:
 
@@ -511,20 +486,6 @@ is_hitting_something, hit_result = KismetSystemLibrary.LineTraceSingle_NEW(self.
 if is_hitting_something:
     ue.log(hit_result)
 ```
-
-Structs are exposed by the unreal_engine.structs virtual module. Remember that structs are passed by value (not by ref like UObject's), so a dedicated unreal_engine.UScriptStruct python class is exposed.
-
-To create a new struct instance you can do:
-
-```python
-from unreal_engine.structs import TerrificStruct
-
-ts = TerrificStruct()
-```
-
-To access the fields of a struct just call the fields() method.
-
-A good example of struct usage is available here: https://github.com/20tab/UnrealEnginePython/blob/master/docs/Settings.md
 
 The ue_site.py file
 -------------------
@@ -888,7 +849,7 @@ class Ball:
 
 Now we create (at runtime !!!) a whole new PyActor:
 
-```python
+```py
 class SuperHero:
     def begin_play(self):
         # spawn a new PyActor
@@ -904,47 +865,6 @@ class SuperHero:
         
     def tick(self, delta_time):
         pass
-```
-
-Spawning Notes
---------------
-
-Remember that only Actors can be spawned in a world, and that even the editor is a valid world:
-
-```python
-import unreal_engine as ue
-from unreal_engine.classes import Actor, Character
-from unreal_engine import FVector, FRotator
-
-world = ue.get_editor_world()
-actor000 = world.actor_spawn(Actor, FVector(0, 0, 0), FRotator(0, 0, 0))
-character000 = world.actor_spawn(Character, FVector(100, 100, 100), FRotator(0, 0, 0))
-```
-
-Remember that the Blueprint asset is not a valid actor by itself, you need to get the class generated by the blueprint:
-
-```python
-import unreal_engine as ue
-from unreal_engine.classes import Blueprint
-from unreal_engine import FVector, FRotator
-
-world = ue.get_editor_world()
-
-blueprint = ue.load_object(Blueprint, '/Game/TestBall.TestBall')
-actor000 = world.actor_spawn(blueprint.GeneratedClass, FVector(0, 0, 0), FRotator(0, 0, 0))
-```
-
-otherwise you can directly reference the BlueprintGeneratedClass
-
-```python
-import unreal_engine as ue
-from unreal_engine.classes import BlueprintGeneratedClass
-from unreal_engine import FVector, FRotator
-
-world = ue.get_editor_world()
-
-blueprint_actor = ue.load_object(BlueprintGeneratedClass, '/Game/TestBall.TestBall_C')
-actor000 = world.actor_spawn(blueprint_actor, FVector(0, 0, 0), FRotator(0, 0, 0))
 ```
 
 Integration with PyQT
@@ -1010,15 +930,7 @@ In addition to this, every time a uobject has to return its UObject mapping, it 
 Unit Testing
 ------------
 
-The repository includes the tests/ directory from which unit tests will be run.
-
-To run the unit tests (ensure to run them on an empty/useless project to avoid messing with assets) run the following commands from the ue4 python console:
-
-```python
-import unreal_engine as ue
-ue.sandbox_exec(ue.find_plugin('UnrealEnginePython').get_base_dir() + '/run_tests.py')
-```
-if you plan to add new features to the plugin, including a test suite in your pull request will be really appreciated ;)
+The repository includes a TestingActor asset and a tests.py script. Just add the asset and the script to your project and the test suite will be run. The test suite is still a prototype it will be improved soon.
 
 Threading (Experimental)
 ------------------------
@@ -1038,41 +950,6 @@ on top of UnrealEnginePythonPrivatePCH.h and rebuild the plugin.
 
 As with native threads, do not modify (included deletion) UObjects from non-main threads.
 
-Accessing Python Proxy From UObject
------------------------------------
-
-Sometimes you may have a UObject and know that it is backed by a python object. To get the python object from the UObject, use the `get_py_proxy` method. For example, imagine you have the following situation:
-
-   1. There is a `PyActor` sub-class called `PyExplosiveActor` which has `Explosive` as its python class.
-   2. The `Explosive` has a `go_boom` python method.
-   3. There is a `PyActor` sub-class called `PyBadGuyActor` which has a Blueprint property called `MyBomb` and a python class called `BadGuy`.
-   4. The `BadGuy` instance in python knows that its UObject has its `MyBomb` as an instance of `PyExplosiveActor` and wants to call the `go_boom` python method.
-   
-This would be resolved as shown below:
-
-```
-import unreal_engine as ue
-
-class Explosive:
-    'Python representation for PyExplosiveActor in UE4'
-
-    def go_boom(self):
-        # do python stuff to explode
-        ...
-        self.uobject.destory()
-
-class BadGuy:
-    'Python reprsentation for PyBadGuyActor in UE4'
-   
-    def ignite_bomb(self, delay):
-        bomb = self.uobject.MyBomb
-        py_bomb = bomb.get_py_proxy()
-        py_bomb.go_boom()
-	
-```
-
-What is going on here in `BadGuy` is that self.uobject is a reference to the PyActor UObject and `self.uobject.MyBomb` is a reference to the `PyExplosive` uobject. But instead you want to access its proxy class (`Explosive`). The `get_py_proxy()` method returns the python custom class, `Explosive` that the `PyExplosiveActor` object is mapped to.
-
 Status and Known issues
 -----------------------
 
@@ -1087,9 +964,7 @@ We still do not have a plugin icon ;)
 The build system is not very robust. Maybe linking the python static library into the plugin dll could be a better approach.
 
 
-Contacts and Commercial Support
--------------------------------
+Contacts
+--------
 
 If you want to contact us (for help, support, sponsorship), drop a mail to info at 20tab.com or follow @unbit on twitter
-
-We offer commercial support for both UnrealEngine and UnrealEnginePython, again drop a mail to info at 20tab.com for more infos

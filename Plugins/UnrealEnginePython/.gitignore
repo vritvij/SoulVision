@@ -89,5 +89,3 @@ ENV/
 .ropeproject
 
 Binaries/
-python35/
-python27/
