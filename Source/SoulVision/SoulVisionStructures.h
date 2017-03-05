@@ -11,14 +11,18 @@ enum class EElementalTypes : uint8
 	Fire		UMETA(DisplayName = "Fire"),
 	Water		UMETA(DisplayName = "Water"),
 	Earth		UMETA(DisplayName = "Earth"),
-	Air			UMETA(DisplayName = "Air")
+	Air			UMETA(DisplayName = "Air"),
+
+	Max			UMETA(Hidden)
 };
 
 UENUM(BlueprintType)
 enum class EExecutionTypes : uint8
 {
 	Melee		UMETA(DisplayName = "Melee"),
-	Ranged		UMETA(DisplayName = "Ranged")
+	Ranged		UMETA(DisplayName = "Ranged"),
+
+	Max			UMETA(Hidden)
 };
 
 UENUM(BlueprintType)
@@ -29,14 +33,18 @@ enum class EStatusTypes : uint8
 	Paralyzed	UMETA(DisplayName = "Paralyzed"),
 	Frozen		UMETA(DisplayName = "Frozen"),
 	Poisoned	UMETA(DisplayName = "Poisoned"),
-	Burnt		UMETA(DisplayName = "Burnt")
+	Burnt		UMETA(DisplayName = "Burnt"),
+
+	Max			UMETA(Hidden)
 };
 
 UENUM(BlueprintType)
 enum class ETargetTypes : uint8
 {
 	Self		UMETA(DisplayName = "Self"),
-	Enemy		UMETA(DisplayName = "Enemy")
+	Enemy		UMETA(DisplayName = "Enemy"),
+
+	Max			UMETA(Hidden)
 };
 
 
@@ -59,7 +67,7 @@ struct FLearnableMove
 };
 
 USTRUCT(BlueprintType, meta = (ToolTip = "Data structure for storing base values for the creature"))
-struct FBaseCreatureData
+struct FBaseCreatureData : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -101,7 +109,7 @@ struct FBaseCreatureData
 };
 
 USTRUCT(BlueprintType, meta = (ToolTip = "Data structure for storing information for moves performed by a creature"))
-struct FMoveData
+struct FMoveData : public FTableRowBase
 {
 	GENERATED_BODY()
 
