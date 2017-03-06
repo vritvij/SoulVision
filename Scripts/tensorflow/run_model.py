@@ -205,7 +205,9 @@ def run_training():
     sess = tf.Session()
 
     # Instantiate a SummaryWriter to output summaries and the Graph.
-    summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
+    curr_dir = os.path.dirname(os.path.realpath(__file__))
+    log_dir = os.path.join(curr_dir, FLAGS.log_dir)
+    summary_writer = tf.summary.FileWriter(log_dir, sess.graph)
     
     
     # And then after everything is built:
@@ -240,7 +242,7 @@ def run_training():
       duration = time.time() - start_time
 
       # Write the summaries and print an overview fairly often.
-      if step % 5 == 0:
+      if step % 100 == 0:
         # Print status to stdout.
         print('Step %d: loss = %.2f (%.3f sec)' % (step, loss_value, duration))
         # Update the events file.
@@ -249,7 +251,7 @@ def run_training():
         summary_writer.flush()
 
       # Save a checkpoint and evaluate the model periodically.
-      if (step + 1) % 10 == 0 or (step + 1) == FLAGS.max_steps:
+      if (step + 1) % 200 == 0 or (step + 1) == FLAGS.max_steps:
         curr_dir = os.path.dirname(os.path.realpath(__file__))
         log_dir = os.path.join(curr_dir, FLAGS.log_dir)
         checkpoint_file = os.path.join(log_dir, 'model.ckpt')
@@ -303,7 +305,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--batch_size',
       type=int,
-      default=20,
+      default=248832,
       help='Batch size.  Must divide evenly into the dataset sizes.'
   )
   # This is irrelevant for now

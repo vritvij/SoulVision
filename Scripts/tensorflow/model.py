@@ -50,7 +50,7 @@ INPUT_SIZE = NUM_ATTACKS + 8
 OUTPUT_SIZE = 1 + NUM_ATTACKS
 
 # Maximum number of iteration
-MAX_STEPS = 200
+MAX_STEPS = 2000
 
 # Hidden units in layer 1
 HIDDEN1_UNITS = 128
