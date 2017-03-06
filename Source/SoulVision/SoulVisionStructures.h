@@ -187,3 +187,42 @@ struct FCreatureData
 		Level = 5;
 	}
 };
+
+USTRUCT(BlueprintType, meta = (ToolTip = "Data structure for tensorflow communication"))
+struct FTensorFlowData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float DeltaHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float AttackerType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float AttackerHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float AttackerStatus;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float DefenderType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float DefenderHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float DefenderStatus;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float Distance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	TArray<float> MoveSet;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	float FleeProbability;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
+	TArray<float> MoveProbability;
+};
