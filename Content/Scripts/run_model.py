@@ -252,8 +252,7 @@ def run_training():
 
       # Save a checkpoint and evaluate the model periodically.
       if (step + 1) % 200 == 0 or (step + 1) == FLAGS.max_steps:
-        curr_dir = os.path.dirname(os.path.realpath(__file__))
-        log_dir = os.path.join(curr_dir, FLAGS.log_dir)
+        log_dir = FLAGS.log_dir
         checkpoint_file = os.path.join(log_dir, 'model.ckpt')
         saver.save(sess, checkpoint_file, global_step=step+1)
         # Evaluate against the training set.
@@ -266,8 +265,7 @@ def run_training():
  
 	
 def main(_):
-  curr_dir = os.path.dirname(os.path.realpath(__file__))
-  log_dir = os.path.join(curr_dir, FLAGS.log_dir)
+  log_dir = FLAGS.log_dir
   if tf.gfile.Exists(log_dir):
     tf.gfile.DeleteRecursively(log_dir)
   tf.gfile.MakeDirs(log_dir)

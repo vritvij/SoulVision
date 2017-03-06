@@ -72,7 +72,6 @@ class TensorFlowComponent:
                 tf.global_variables_initializer().run()
                 
                 # load checkpoint file
-                ue.log('checkpoint folder : ' + str(ckpt_dir))
                 checkpoint_file = tf.train.latest_checkpoint(ckpt_dir)
                 new_saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file)) 
                 new_saver.restore(sess, checkpoint_file)
@@ -89,7 +88,7 @@ class TensorFlowComponent:
                 # values
                 output = sess.run(prediction, feed_dict)
                 # convert output to numpy array to manipulate
-                output = numpy.array(output).reshape(11,)
+                output = numpy.array(output).reshape(1 + len(inputstruct['moveSet']),)
                 # log to debug
                 ue.log(output)
                 
