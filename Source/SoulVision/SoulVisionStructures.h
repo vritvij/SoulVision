@@ -194,7 +194,7 @@ struct FTensorFlowData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
-	float DeltaHealth;
+	float DeltaLevel;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
 	float AttackerType;
