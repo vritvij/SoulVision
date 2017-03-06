@@ -26,6 +26,38 @@ public:
 		return Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), NULL, *Path.ToString()));
 	}
 
+	static FORCEINLINE float GetStatusBonus(const EStatusTypes Status)
+	{
+		float StatusBonus = 1.0f;
+		switch (Status)
+		{
+		case EStatusTypes::Paralyzed:
+		case EStatusTypes::Poisoned:
+		case EStatusTypes::Burnt:
+			StatusBonus = 1.5f;
+			break;
+		case EStatusTypes::Asleep:
+		case EStatusTypes::Frozen:
+			StatusBonus = 2.0f;
+			break;
+		default:
+			break;
+		}
+
+		return StatusBonus;
+	}
+
+	static FORCEINLINE TArray<EElementalTypes> GetCreatureType(const FName& CreatureName)
+	{
+		TArray<EElementalTypes> Type;
+		UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
+		if (CreaturesDataTable)
+		{
+			Type = CreaturesDataTable->FindRow<FBaseCreatureData>(CreatureName, TEXT("Find Creature Data"))->Type;
+		}
+		return Type;
+	}
+
 	UFUNCTION(BlueprintCallable, Category = "SoulVisionFunctionLibrary")
 	static bool SaveStringTextToFile(FString SaveDirectory, FString FileName, FString TextToSave, bool AllowOverWriting = false);
 	
@@ -42,6 +74,9 @@ public:
 	static void GetStatsAtLevel(const FName& CreatureName, const int32& Level, int32& Health, int32& Attack, int32& Defense, int32& Speed);
 
 	UFUNCTION(BlueprintCallable, Category = "SoulVisionFunctionLibrary")
+	static void GetMoveSetAtLevel(const FName& CreatureName, const int32& Level, TArray<FName>& MoveSet);
+	
+	UFUNCTION(BlueprintCallable, Category = "SoulVisionFunctionLibrary")
 	static void GetPossessionRate(const FCreatureData& CreatureData, float& PossessionRate);
 
 	UFUNCTION(BlueprintCallable, Category = "SoulVisionFunctionLibrary")
@@ -51,10 +86,10 @@ public:
 	static int32 GetExperienceGain(const FCreatureData& Winner, const FCreatureData& Loser);
 
 	UFUNCTION(BlueprintCallable, Category = "TensorFlowHelpers")
-	static int32 HashCreatureTypeArray(const TArray<EElementalTypes>& CreatureType);
+	static FString HashCreatureTypeArray(const TArray<EElementalTypes>& CreatureType);
 
 	UFUNCTION(BlueprintCallable, Category = "TensorFlowHelpers")
-	static int32 HashCreatureStatus(const EStatusTypes& CreatureStatus);
+	static FString HashCreatureStatus(const EStatusTypes& CreatureStatus);
 
 	UFUNCTION(BlueprintCallable, Category = "TensorFlowHelpers")
 	static TArray<float> ConvertToLocalMovesProbabilityArray(const TArray<float>& GlobalMovesProbabilityArray, const TArray<FName>& AvailableMovesArray);
@@ -63,5 +98,5 @@ public:
 	static TArray<float> ConvertToGlobalMovesProbabilityArray(const TArray<float>& LocalMovesProbabilityArray, const TArray<FName>& AvailableMovesArray);
 
 	UFUNCTION(BlueprintCallable, Category = "TensorFlowHelpers")
-	static TArray<FString> FloatArrayToStringArray(const TArray<float>& FloatArray);
+	static FString FloatArrayToString(const TArray<float>& FloatArray, const FString& Separator);
 };

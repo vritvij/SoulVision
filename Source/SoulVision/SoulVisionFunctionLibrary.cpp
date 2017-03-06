@@ -187,6 +187,48 @@ void USoulVisionFunctionLibrary::GetStatsAtLevel(
 	}
 }
 
+void USoulVisionFunctionLibrary::GetMoveSetAtLevel(
+	const FName& CreatureName,
+	const int32& CreatureLevel,
+	TArray<FName>& MoveSet)
+{
+	//Initialize variables
+	MoveSet.Empty();
+
+	//Fetch Creature and Move data tables
+	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
+	if (CreaturesDataTable)
+	{
+		//Fetch Creature Data
+		FBaseCreatureData* CreatureData = CreaturesDataTable->FindRow<FBaseCreatureData>(
+			CreatureName,
+			TEXT("Fetch Creature Data")
+			);
+
+		if (CreatureData)
+		{
+			for (FLearnableMove Move : CreatureData->LearnSet)
+			{
+				//If creature level is lower than level needed to learn move, break 
+				if (CreatureLevel < Move.Level)
+					break;
+
+				MoveSet.Add(Move.MoveName);
+			}
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(
+			GEngine->ScreenMessages.Num() + 1,
+			5.0f,
+			FColor::Yellow,
+			TEXT("Data table couldn't be loaded")
+		);
+	}
+}
+
+
 void USoulVisionFunctionLibrary::GetPossessionRate(
 	const FCreatureData& CreatureData,
 	float& PossessionRate) 
@@ -207,21 +249,7 @@ void USoulVisionFunctionLibrary::GetPossessionRate(
 		if (CreatureBase)
 		{
 			//Bonus for infliced status damage
-			float StatusBonus = 1.0f;
-			switch (CreatureData.Status)
-			{
-			case EStatusTypes::Paralyzed:
-			case EStatusTypes::Poisoned:
-			case EStatusTypes::Burnt:
-				StatusBonus = 1.5f;
-				break;
-			case EStatusTypes::Asleep:
-			case EStatusTypes::Frozen:
-				StatusBonus = 2.0f;
-				break;
-			default:
-				break;
-			}
+			float StatusBonus = GetStatusBonus(CreatureData.Status);
 
 			PossessionRate = (((3 * CreatureData.MaxHealth) - (2 * CreatureData.CurrentHealth))
 				* CreatureBase->BasePossessionProbability * StatusBonus) / (3 * CreatureData.MaxHealth);
@@ -300,25 +328,25 @@ int32 USoulVisionFunctionLibrary::GetExperienceGain(
 	return ExperienceGain;
 }
 
-int32 USoulVisionFunctionLibrary::HashCreatureTypeArray(
+FString USoulVisionFunctionLibrary::HashCreatureTypeArray(
 	const TArray<EElementalTypes>& CreatureType)
 {
 	//Initialize variables
-	int32 Hash = 0;
+	FString Hash = "";
 	
 	//Hash generation
 	for (EElementalTypes Type : CreatureType)
 	{
-		Hash = (Hash * 10) + (uint32)Type + 1;
+		Hash += FString::FromInt((uint32)Type + 1);
 	}
 
 	return Hash;
 }
 
-int32 USoulVisionFunctionLibrary::HashCreatureStatus(
+FString USoulVisionFunctionLibrary::HashCreatureStatus(
 	const EStatusTypes& CreatureStatus)
 {
-	return (int32)CreatureStatus;
+	return FString::FromInt((int32)CreatureStatus);
 }
 
 TArray<float> USoulVisionFunctionLibrary::ConvertToLocalMovesProbabilityArray(
@@ -327,7 +355,7 @@ TArray<float> USoulVisionFunctionLibrary::ConvertToLocalMovesProbabilityArray(
 {
 	//Initialize variables
 	TArray<float> LocalMovesProbabilityArray;
-	LocalMovesProbabilityArray.Reserve(AvailableMovesArray.Num());
+	LocalMovesProbabilityArray.Init(0.0f, AvailableMovesArray.Num());
 
 	//Get creature data table
 	UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
@@ -365,14 +393,14 @@ TArray<float> USoulVisionFunctionLibrary::ConvertToGlobalMovesProbabilityArray(
 {
 	//Initialize variables
 	TArray<float> GlobalMovesProbabilityArray;
-
+	
 	//Get creature data table
 	UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
 	if (MovesDataTable)
 	{
 		//Fetch all row names
 		TArray<FName> GlobalMovesArray = MovesDataTable->GetRowNames();
-		GlobalMovesProbabilityArray.Reserve(GlobalMovesArray.Num());
+		GlobalMovesProbabilityArray.Init(0.0f, GlobalMovesArray.Num());
 
 		for (int i = 0; i<AvailableMovesArray.Num(); i++)
 		{
@@ -397,15 +425,16 @@ TArray<float> USoulVisionFunctionLibrary::ConvertToGlobalMovesProbabilityArray(
 	return GlobalMovesProbabilityArray;
 }
 
-TArray<FString> USoulVisionFunctionLibrary::FloatArrayToStringArray(const TArray<float>& FloatArray)
+FString USoulVisionFunctionLibrary::FloatArrayToString(const TArray<float>& FloatArray, const FString& Separator)
 {
-	TArray<FString> StringArray;
-	StringArray.Reserve(FloatArray.Num());
+	FString String;
 
 	for (int i = 0; i<FloatArray.Num(); i++)
 	{
-		StringArray[i] = FString::SanitizeFloat(FloatArray[i]);
+		String += FString::SanitizeFloat(FloatArray[i]);
+		if (i != FloatArray.Num() - 1)
+			String += Separator;
 	}
 
-	return StringArray;
+	return String;
 }
