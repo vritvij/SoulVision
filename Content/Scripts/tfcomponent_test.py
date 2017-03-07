@@ -25,15 +25,7 @@ class TensorFlowComponent:
     # this is called on game start
     def begin_play(self):
         ue.log('Beginplay')
-        
-        #call a blueprint function
-        self.uobject.bpfunction('hi from python')
-
-    
-    #bp to python test
-    def pythonfunction(self, args):
-        ue.log('python function call with: ' + args)
-
+   
     #tensor input
     def tensorinput(self, args):
         ue.log('TF inputs passed: ' + args)
