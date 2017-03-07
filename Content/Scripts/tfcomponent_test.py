@@ -81,6 +81,7 @@ class TensorFlowComponent:
                 output = sess.run(prediction, feed_dict)
                 # convert output to numpy array to manipulate
                 output = numpy.array(output).reshape(1 + len(inputstruct['moveSet']),)
+                output /= numpy.max(output)
                 # log to debug
                 ue.log(output)
                 
