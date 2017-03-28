@@ -226,3 +226,27 @@ struct FTensorFlowData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TensorFlow Data")
 	TArray<float> MoveProbability;
 };
+
+USTRUCT(BlueprintType, meta = (ToolTip = "Data structure to store creature delta values after level change"))
+struct FLevelChangeData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaLevel;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaExperience;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaAttack;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaDefense;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Level Change Data")
+	int32 DeltaSpeed;
+};

@@ -11,10 +11,7 @@ class SOULVISION_API FDataGeneratorWorker : public FRunnable
 
 	//Thread to run the worker on
 	FRunnableThread* Thread;
-
-	//The player controller to send updates to
-	ADataGeneratorPlayerController* PlayerController;
-
+	
 	//Thread Safe Counter used to stop this thread
 	FThreadSafeCounter StopTaskCounter;
 
@@ -44,7 +41,6 @@ public:
 
 	//Constructor and Destructor
 	FDataGeneratorWorker(
-		ADataGeneratorPlayerController* PC,
 		int32 LevelStart, int32 LevelEnd, int32 LevelIncrement,
 		int32 HealthStart, int32 HealthEnd, int32 HealthIncrement,
 		int32 DistanceStart, int32 DistanceEnd, int32 DistanceIncrement,
@@ -65,7 +61,6 @@ public:
 
 	//Starting the thread
 	static FDataGeneratorWorker* GenerateData(
-		ADataGeneratorPlayerController* PC,
 		int32 LevelStart, int32 LevelEnd, int32 LevelIncrement,
 		int32 HealthStart, int32 HealthEnd, int32 HealthIncrement,
 		int32 DistanceStart, int32 DistanceEnd, int32 DistanceIncrement,

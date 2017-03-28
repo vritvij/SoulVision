@@ -22,38 +22,38 @@ public:
 
 	//Configurable properties
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 LevelStart = 5;
+	int32 LevelStart = 5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 LevelEnd = 15;
+	int32 LevelEnd = 15;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 LevelIncrement = 5;
+	int32 LevelIncrement = 5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 HealthStart = 25;
+	int32 HealthStart = 25;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 HealthEnd = 100;
+	int32 HealthEnd = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 HealthIncrement = 25;
+	int32 HealthIncrement = 25;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 DistanceStart = 50;
+	int32 DistanceStart = 50;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 DistanceEnd = 150;
+	int32 DistanceEnd = 150;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 DistanceIncrement = 50;
+	int32 DistanceIncrement = 50;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		float FleeBiasMultiplier = 2.0f;
+	float FleeBiasMultiplier = 2.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		int32 FleeBiasMinimumHealth = 10;
+	int32 FleeBiasMinimumHealth = 10;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data Generator Configuration")
-		FString FileName = "TrainingData.csv";
+	FString FileName = "TrainingData.csv";
 };

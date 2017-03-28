@@ -7,7 +7,6 @@
 void ADataGeneratorPlayerController::StartDataGeneration()
 {
 	FDataGeneratorWorker::GenerateData(
-		this, 
 		LevelStart, LevelEnd, LevelIncrement,
 		HealthStart, HealthEnd, HealthIncrement,
 		DistanceStart, DistanceEnd, DistanceIncrement,

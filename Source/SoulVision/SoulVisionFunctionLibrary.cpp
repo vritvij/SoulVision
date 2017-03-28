@@ -61,10 +61,6 @@ float USoulVisionFunctionLibrary::GetEffectiveness(
 	const EElementalTypes& Attacking,
 	const EElementalTypes& Defending) 
 {
-	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("EElementalTypes"), true);
-	if (!EnumPtr)
-		return 1.0f;
-
 	return TypeChart[(int32)Attacking][(int32)Defending];
 }
 
@@ -81,65 +77,37 @@ void USoulVisionFunctionLibrary::GetDamage(
 	Status = EStatusTypes::None;
 	Target = ETargetTypes::Enemy;
 
-	//Fetch Creature and Move data tables
-	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
 	
-	if (CreaturesDataTable && MovesDataTable)
-	{
-		//Fetch Move Data
-		FMoveData* MoveData = MovesDataTable->FindRow<FMoveData>(Move, TEXT("Fetch Move Data"));
-		//Fetch Attacking Creature Data
-		FBaseCreatureData* AttackerBase = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			AttackingCreature.Name,
-			TEXT("Fetch Attacking Creature Data")
-			);
-		//Fetch Defending Creature Data
-		FBaseCreatureData* DefenderBase = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			DefendingCreature.Name,
-			TEXT("Fetch Defending Creature Data")
-			);
+	//Fetch Move Data
+	FMoveData* MoveData = GetMoveData(Move);
 
-		if (MoveData && AttackerBase && DefenderBase)
+	if (MoveData)
+	{
+		float ScaleFactor = 1.0f;
+		//Bonus for using move with same type as creature
+		for (EElementalTypes AttackerType : USoulVisionFunctionLibrary::GetCreatureType(AttackingCreature.Name))
 		{
-			float ScaleFactor = 1.0f;
-			//Bonus for using move with same type as creature
-			for (EElementalTypes AttackerType : AttackerBase->Type)
+			if (MoveData->Type == AttackerType)
 			{
-				if (MoveData->Type == AttackerType)
-				{
-					ScaleFactor *= 1.5;
-				}
+				ScaleFactor *= 1.5;
 			}
-			//Bonus for using move opponent is weak against
-			for (EElementalTypes DefenderType : DefenderBase->Type) 
-			{
-				ScaleFactor *= GetEffectiveness(MoveData->Type, DefenderType);
-			}
-			//Add some randomness
-			ScaleFactor *= FMath::FRandRange(0.85, 1);
-
-			Damage = (((2 * (float)AttackingCreature.Level + 10) / 250) * ((float)MoveData->BaseDamage * (float)AttackingCreature.Attack / (float)DefendingCreature.Defense) + 2) * ScaleFactor;
-			Status = MoveData->StatusEffect;
-			Target = MoveData->Target;
 		}
-		
-	}
-	else 
-	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num()+1,
-			5.0f, 
-			FColor::Yellow, 
-			TEXT("Data table couldn't be loaded")
-		);
+		//Bonus for using move opponent is weak against
+		for (EElementalTypes DefenderType : USoulVisionFunctionLibrary::GetCreatureType(DefendingCreature.Name))
+		{
+			ScaleFactor *= GetEffectiveness(MoveData->Type, DefenderType);
+		}
+		//Add some randomness
+		ScaleFactor *= FMath::FRandRange(0.85, 1);
+
+		Damage = (((2 * (float)AttackingCreature.Level + 10) / 250) * ((float)MoveData->BaseDamage * (float)AttackingCreature.Attack / (float)DefendingCreature.Defense) + 2) * ScaleFactor;
+		Status = MoveData->StatusEffect;
+		Target = MoveData->Target;
 	}
 }
 
 
-void USoulVisionFunctionLibrary::GetExperienceAtLevel(
-	const int32& Level,
-	int32& Experience)
+void USoulVisionFunctionLibrary::GetExperienceAtLevel(const int32& Level, int32& Experience)
 {
 	Experience = ((6 / 5) * FMath::Pow(Level, 3)) - (15 * FMath::Pow(Level, 2)) + (100 * Level) - 140;
 }
@@ -158,32 +126,16 @@ void USoulVisionFunctionLibrary::GetStatsAtLevel(
 	Defense = 0;
 	Speed = 0;
 
-	//Get Creature data table
-	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	if (CreaturesDataTable)
-	{
-		//Fetch creature data
-		FBaseCreatureData* CreatureBase = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			CreatureName,
-			TEXT("Fetch Creature Data")
-			);
+	
+	//Fetch creature data
+	FBaseCreatureData* BaseCreatureData = GetBaseCreatureData(CreatureName);
 
-		if (CreatureBase)
-		{
-			Health = ((float)CreatureBase->BaseHealth * 2 * Level / 100) + Level +10;
-			Attack = ((float)CreatureBase->BaseAttack * 2 * Level / 100) + 5;
-			Defense = ((float)CreatureBase->BaseDefense * 2 * Level / 100) + 5;
-			Speed = ((float)CreatureBase->BaseSpeed * 2 * Level / 100) + 5;
-		}
-	}
-	else
+	if (BaseCreatureData)
 	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
+		Health = ((float)BaseCreatureData->BaseHealth * 2 * Level / 100) + Level + 10;
+		Attack = ((float)BaseCreatureData->BaseAttack * 2 * Level / 100) + 5;
+		Defense = ((float)BaseCreatureData->BaseDefense * 2 * Level / 100) + 5;
+		Speed = ((float)BaseCreatureData->BaseSpeed * 2 * Level / 100) + 5;
 	}
 }
 
@@ -194,37 +146,20 @@ void USoulVisionFunctionLibrary::GetMoveSetAtLevel(
 {
 	//Initialize variables
 	MoveSet.Empty();
+	
+	//Fetch Creature Data
+	FBaseCreatureData* BaseCreatureData = GetBaseCreatureData(CreatureName);
 
-	//Fetch Creature and Move data tables
-	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	if (CreaturesDataTable)
+	if (BaseCreatureData)
 	{
-		//Fetch Creature Data
-		FBaseCreatureData* CreatureData = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			CreatureName,
-			TEXT("Fetch Creature Data")
-			);
-
-		if (CreatureData)
+		for (FLearnableMove Move : BaseCreatureData->LearnSet)
 		{
-			for (FLearnableMove Move : CreatureData->LearnSet)
-			{
-				//If creature level is lower than level needed to learn move, break 
-				if (CreatureLevel < Move.Level)
-					break;
+			//If creature level is lower than level needed to learn move, break 
+			if (CreatureLevel < Move.Level)
+				break;
 
-				MoveSet.Add(Move.MoveName);
-			}
+			MoveSet.Add(Move.MoveName);
 		}
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
 	}
 }
 
@@ -236,34 +171,16 @@ void USoulVisionFunctionLibrary::GetPossessionRate(
 	//Initialize variables
 	PossessionRate = 0.0f;
 
-	//Get creature data table
-	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	if (CreaturesDataTable)
+	//Fetch creature data
+	FBaseCreatureData* BaseCreatureData = GetBaseCreatureData(CreatureData.Name);
+
+	if (BaseCreatureData)
 	{
-		//Fetch creature data
-		FBaseCreatureData* CreatureBase = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			CreatureData.Name,
-			TEXT("Fetch Creature Data")
-			);
+		//Bonus for infliced status damage
+		float StatusBonus = GetStatusBonus(CreatureData.Status);
 
-		if (CreatureBase)
-		{
-			//Bonus for infliced status damage
-			float StatusBonus = GetStatusBonus(CreatureData.Status);
-
-			PossessionRate = (((3 * CreatureData.MaxHealth) - (2 * CreatureData.CurrentHealth))
-				* CreatureBase->BasePossessionProbability * StatusBonus) / (3 * CreatureData.MaxHealth);
-
-		}
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
+		PossessionRate = (((3 * CreatureData.MaxHealth) - (2 * CreatureData.CurrentHealth))
+			* BaseCreatureData->BasePossessionProbability * StatusBonus) / (3 * CreatureData.MaxHealth);
 	}
 }
 
@@ -299,30 +216,13 @@ int32 USoulVisionFunctionLibrary::GetExperienceGain(
 	//Initialize variables
 	int32 ExperienceGain = 0;
 
-	//Get creature data table
-	UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	if (CreaturesDataTable)
-	{
-		//Fetch lose creature data
-		FBaseCreatureData* LoserCreatureBase = CreaturesDataTable->FindRow<FBaseCreatureData>(
-			Loser.Name,
-			TEXT("Fetch Loser Creature Data")
-			);
+	//Fetch lose creature data
+	FBaseCreatureData* LoserBaseCreatureData = GetBaseCreatureData(Loser.Name);
 
-		if (LoserCreatureBase)
-		{
-			ExperienceGain = (LoserCreatureBase->BaseExperienceYield * Loser.Level / 5) *
-				FMath::Pow(((2 * Loser.Level + 10) / (Loser.Level + Winner.Level + 10)), 2.5) + 1;
-		}
-	}
-	else
+	if (LoserBaseCreatureData)
 	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
+		ExperienceGain = (LoserBaseCreatureData->BaseExperienceYield * Loser.Level / 5) *
+			FMath::Pow(((2 * Loser.Level + 10) / (Loser.Level + Winner.Level + 10)), 2.5) + 1;
 	}
 
 	return ExperienceGain;
@@ -357,31 +257,16 @@ TArray<float> USoulVisionFunctionLibrary::ConvertToLocalMovesProbabilityArray(
 	TArray<float> LocalMovesProbabilityArray;
 	LocalMovesProbabilityArray.Init(0.0f, AvailableMovesArray.Num());
 
-	//Get creature data table
-	UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
-	if (MovesDataTable)
+	//Fetch all move names
+	TArray<FName> GlobalMovesArray = GetMoveNames();
+
+	for (int i = 0; i < AvailableMovesArray.Num(); i++)
 	{
-		//Fetch all row names
-		TArray<FName> GlobalMovesArray = MovesDataTable->GetRowNames();
+		int32 index = GlobalMovesArray.Find(AvailableMovesArray[i]);
 
-		for(int i=0; i<AvailableMovesArray.Num(); i++)
-		{
-			int32 index = GlobalMovesArray.Find(AvailableMovesArray[i]);
-
-			if (index != INDEX_NONE) {
-				LocalMovesProbabilityArray[i] = GlobalMovesProbabilityArray[index];
-			}
+		if (index != INDEX_NONE) {
+			LocalMovesProbabilityArray[i] = GlobalMovesProbabilityArray[index];
 		}
-
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
 	}
 
 	return LocalMovesProbabilityArray;
@@ -394,32 +279,17 @@ TArray<float> USoulVisionFunctionLibrary::ConvertToGlobalMovesProbabilityArray(
 	//Initialize variables
 	TArray<float> GlobalMovesProbabilityArray;
 	
-	//Get creature data table
-	UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
-	if (MovesDataTable)
+	//Fetch all move names
+	TArray<FName> GlobalMovesArray = GetMoveNames();
+	GlobalMovesProbabilityArray.Init(0.0f, GlobalMovesArray.Num());
+
+	for (int i = 0; i < AvailableMovesArray.Num(); i++)
 	{
-		//Fetch all row names
-		TArray<FName> GlobalMovesArray = MovesDataTable->GetRowNames();
-		GlobalMovesProbabilityArray.Init(0.0f, GlobalMovesArray.Num());
+		int32 index = GlobalMovesArray.Find(AvailableMovesArray[i]);
 
-		for (int i = 0; i<AvailableMovesArray.Num(); i++)
-		{
-			int32 index = GlobalMovesArray.Find(AvailableMovesArray[i]);
-
-			if (index != INDEX_NONE) {
-				GlobalMovesProbabilityArray[index] = LocalMovesProbabilityArray[i];
-			}
+		if (index != INDEX_NONE) {
+			GlobalMovesProbabilityArray[index] = LocalMovesProbabilityArray[i];
 		}
-
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(
-			GEngine->ScreenMessages.Num() + 1,
-			5.0f,
-			FColor::Yellow,
-			TEXT("Data table couldn't be loaded")
-		);
 	}
 
 	return GlobalMovesProbabilityArray;

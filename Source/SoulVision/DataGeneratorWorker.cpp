@@ -8,14 +8,12 @@
 FDataGeneratorWorker* FDataGeneratorWorker::Runnable = NULL;
 
 FDataGeneratorWorker::FDataGeneratorWorker(
-	ADataGeneratorPlayerController* PC,
 	int32 LevelStart, int32 LevelEnd, int32 LevelIncrement,
 	int32 HealthStart, int32 HealthEnd, int32 HealthIncrement,
 	int32 DistanceStart, int32 DistanceEnd, int32 DistanceIncrement,
 	float FleeBiasMultiplier, int32 FleeBiasMinimumHealth,
 	FString FileName)
-	: PlayerController(PC)
-	, LevelStart(LevelStart), LevelEnd(LevelEnd), LevelIncrement(LevelIncrement)
+	: LevelStart(LevelStart), LevelEnd(LevelEnd), LevelIncrement(LevelIncrement)
 	, HealthStart(HealthStart), HealthEnd(HealthEnd), HealthIncrement(HealthIncrement)
 	, DistanceStart(DistanceStart), DistanceEnd(DistanceEnd), DistanceIncrement(DistanceIncrement)
 	, FleeBiasMultiplier(FleeBiasMultiplier), FleeBiasMinimumHealth(FleeBiasMinimumHealth)
@@ -33,12 +31,7 @@ FDataGeneratorWorker::~FDataGeneratorWorker()
 
 bool FDataGeneratorWorker::Init()
 {
-	if (PlayerController)
-	{
-		PlayerController->ClientMessage("===============================");
-		PlayerController->ClientMessage("Data Generator Thread Started!");
-		PlayerController->ClientMessage("===============================");
-	}
+	UE_LOG(General, Log, TEXT("Data Generator Thread Started!"));
 
 	return true;
 }
@@ -47,19 +40,15 @@ uint32 FDataGeneratorWorker::Run()
 {
 	//Initial wait before starting
 	FPlatformProcess::Sleep(0.03);
-
-	//Fetch Creature and Move data tables
-	UDataTable* CreaturesDataTable = USoulVisionFunctionLibrary::LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
-	UDataTable* MovesDataTable = USoulVisionFunctionLibrary::LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
 	
 	//Delete previous file
 	FPlatformFileManager::Get().GetPlatformFile().DeleteFile(*(SaveDirectory + PATH_SEPARATOR + FileName));
 	//Open save file for writing
 	IFileHandle* DataFile = FPlatformFileManager::Get().GetPlatformFile().OpenWrite(*(SaveDirectory + PATH_SEPARATOR + FileName), true);
 
-	if (CreaturesDataTable && MovesDataTable && DataFile)
+	if (DataFile)
 	{
-		const TArray<FName> CreatureNames = CreaturesDataTable->GetRowNames();
+		const TArray<FName> CreatureNames = USoulVisionFunctionLibrary::GetCreatureNames();
 
 		//For all possible combination of attacking creatures
 		for (FName AttackerName : CreatureNames)
@@ -159,7 +148,7 @@ uint32 FDataGeneratorWorker::Run()
 												ETargetTypes CurrentTarget = ETargetTypes::Enemy;
 
 												//Fetch the move data
-												FMoveData* MoveData = MovesDataTable->FindRow<FMoveData>(Move, TEXT("Fetch Move Data"));
+												FMoveData* MoveData = USoulVisionFunctionLibrary::GetMoveData(Move);
 												if (Distance <= MoveData->Range)
 												{
 													USoulVisionFunctionLibrary::GetDamage(Attacker, Defender, Move, CurrentDamage, CurrentStatus, CurrentTarget);
@@ -183,7 +172,7 @@ uint32 FDataGeneratorWorker::Run()
 												ETargetTypes CurrentTarget = ETargetTypes::Enemy;
 
 												//Fetch the move data
-												FMoveData* MoveData = MovesDataTable->FindRow<FMoveData>(Move, TEXT("Fetch Move Data"));
+												FMoveData* MoveData = USoulVisionFunctionLibrary::GetMoveData(Move);
 												if (Distance <= MoveData->Range)
 												{
 													USoulVisionFunctionLibrary::GetDamage(Defender, Attacker, Move, CurrentDamage, CurrentStatus, CurrentTarget);
@@ -245,9 +234,7 @@ uint32 FDataGeneratorWorker::Run()
 	//Indicate that the thread has finished
 	Finished = true;
 
-	PlayerController->ClientMessage("===============================");
-	PlayerController->ClientMessage("Data Generator Thread Finished!");
-	PlayerController->ClientMessage("===============================");
+	UE_LOG(General, Log, TEXT("Data Generator Thread Finished!"));
 
 	return 0;
 }
@@ -258,7 +245,6 @@ void FDataGeneratorWorker::Stop()
 }
 
 FDataGeneratorWorker* FDataGeneratorWorker::GenerateData(
-	ADataGeneratorPlayerController* PC,
 	int32 LevelStart, int32 LevelEnd, int32 LevelIncrement,
 	int32 HealthStart, int32 HealthEnd, int32 HealthIncrement,
 	int32 DistanceStart, int32 DistanceEnd, int32 DistanceIncrement,
@@ -268,7 +254,6 @@ FDataGeneratorWorker* FDataGeneratorWorker::GenerateData(
 	if (!Runnable && FPlatformProcess::SupportsMultithreading())
 	{
 		Runnable = new FDataGeneratorWorker(
-			PC, 
 			LevelStart, LevelEnd, LevelIncrement, 
 			HealthStart, HealthEnd, HealthIncrement, 
 			DistanceStart, DistanceEnd, DistanceIncrement, 

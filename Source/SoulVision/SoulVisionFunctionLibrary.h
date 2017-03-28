@@ -47,15 +47,86 @@ public:
 		return StatusBonus;
 	}
 
-	static FORCEINLINE TArray<EElementalTypes> GetCreatureType(const FName& CreatureName)
+	static FORCEINLINE FBaseCreatureData* GetBaseCreatureData(const FName& CreatureName)
 	{
-		TArray<EElementalTypes> Type;
+		FBaseCreatureData* BaseCreatureData = nullptr;
+
 		UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
 		if (CreaturesDataTable)
 		{
-			Type = CreaturesDataTable->FindRow<FBaseCreatureData>(CreatureName, TEXT("Find Creature Data"))->Type;
+			//Fetch creature data
+			BaseCreatureData = CreaturesDataTable->FindRow<FBaseCreatureData>(CreatureName, TEXT("Fetch Creature Data"));
 		}
+		else
+		{
+			UE_LOG(General, Error, TEXT("Creature Data table couldn't be loaded"));
+		}
+
+		return BaseCreatureData;
+	}
+
+	static FORCEINLINE FMoveData* GetMoveData(const FName& MoveName)
+	{
+		FMoveData* MoveData = nullptr;
+
+		UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
+		if (MovesDataTable)
+		{
+			MoveData = MovesDataTable->FindRow<FMoveData>(MoveName, TEXT("Fetch Move Data"));
+		}
+		else
+		{
+			UE_LOG(General, Error, TEXT("Moves Data table couldn't be loaded"));
+		}
+
+		return MoveData;
+	}
+
+	static FORCEINLINE TArray<EElementalTypes> GetCreatureType(const FName& CreatureName)
+	{
+		TArray<EElementalTypes> Type;
+
+		FBaseCreatureData* BaseCreatureData = GetBaseCreatureData(CreatureName);
+		if (BaseCreatureData)
+		{
+			Type = BaseCreatureData->Type;
+		}
+		
 		return Type;
+	}
+
+	static FORCEINLINE TArray<FName> GetCreatureNames()
+	{
+		TArray<FName> CreatureNames;
+
+		UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
+		if (CreaturesDataTable)
+		{
+			CreatureNames = CreaturesDataTable->GetRowNames();
+		}
+		else
+		{
+			UE_LOG(General, Error, TEXT("Creature Data table couldn't be loaded"));
+		}
+
+		return CreatureNames;
+	}
+
+	static FORCEINLINE TArray<FName> GetMoveNames()
+	{
+		TArray<FName> MoveNames;
+
+		UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
+		if (MovesDataTable)
+		{
+			MoveNames = MovesDataTable->GetRowNames();
+		}
+		else
+		{
+			UE_LOG(General, Error, TEXT("Moves Data table couldn't be loaded"));
+		}
+
+		return MoveNames;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "SoulVisionFunctionLibrary")
