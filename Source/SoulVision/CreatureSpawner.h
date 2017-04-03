@@ -3,7 +3,6 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
-#include "CreatureAIController.h"
 #include "CreatureSpawner.generated.h"
 
 UCLASS()
@@ -14,11 +13,13 @@ class SOULVISION_API ACreatureSpawner : public AActor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Spawner, meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* SpawnerBounds;
 
-	TArray<ACreatureAIController*> SpawnedCreatures;
+	int32 SpawnedCreatures = 0;
 
 	FTimerHandle RetrySpawnTimer;
 
 	uint8 SpawnTries = 0;
+
+	bool bIsRunning = false;
 	
 public:	
 
@@ -33,6 +34,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawner", meta = (ClampMin = "5", ClampMax = "100", UIMin = "5", UIMax = "100"))
 	int32 MaxLevel = 10;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawner")
+	int32 MaxRetries = 3;
 
 	// Sets default values for this actor's properties
 	ACreatureSpawner();
@@ -50,13 +54,13 @@ public:
 
 	void InitSpawner();
 
-	FORCEINLINE void RegisterCreature(ACreatureAIController* CreatureController)
+	FORCEINLINE void RegisterCreature()
 	{
-		SpawnedCreatures.Add(CreatureController);
+		SpawnedCreatures++;
 	}
 
-	FORCEINLINE void DeregisterCreature(ACreatureAIController* CreatureController)
+	FORCEINLINE void DeregisterCreature()
 	{
-		SpawnedCreatures.Remove(CreatureController);	
+		SpawnedCreatures--;	
 	}
 };

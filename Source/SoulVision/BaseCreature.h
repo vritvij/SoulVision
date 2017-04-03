@@ -38,12 +38,23 @@ public:
 
 	// Called when class values are changed in editor
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-
+	
 	// Returns CameraBoom subobject
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	// Returns FollowCamera subobject
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	// Returns the power level of the creature
+	FORCEINLINE int32 GetPowerLevel() {
+		int32 power = 0;
+		// Sum all the stats
+		power = Base.Attack + Base.Defense + Base.Speed + Base.MaxHealth;
+		// Scale power level based on current health
+		power *= ((Base.CurrentHealth / Base.MaxHealth) + 1);
+
+		return power;
+	}
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Controls")
 	void MoveForward(float Value);
@@ -71,4 +82,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Damage")
 	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Damage")
+	void Death();
 };

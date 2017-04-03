@@ -4,15 +4,25 @@
 
 #include "AIController.h"
 #include "BaseCreature.h"
+#include "CreatureSpawner.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "CreatureAIController.generated.h"
 
 UENUM()
-enum class ELeaderEvent : uint8
+enum class ECommRequests : uint8
 {
-	HailLeader,
-	ForgetLeader
+	RequestLeadership,
+	RelinquishLeadership,
+	RequestFollowership,
+	AbandonLeader
+};
+
+UENUM()
+enum class ECommResponses : uint8
+{
+	OK,
+	N_OK
 };
 
 UCLASS()
@@ -21,6 +31,9 @@ class SOULVISION_API ACreatureAIController : public AAIController
 	GENERATED_BODY()
 
 private:
+	// Stores a reference to spawner
+	ACreatureSpawner* Spawner;
+
 	// Controlled creature reference
 	ABaseCreature* ControlledCreature;
 
@@ -31,12 +44,49 @@ private:
 	// Called when an attack is to be performed
 	void Attack();
 
+
+	/* Depth-Limited Ripple Leader Election Algorithm */
+
+	// Store reference to Leader
+	ACreatureAIController* Leader = NULL;
+
+	// Stores a list of all neighbors
+	TSet<ACreatureAIController*> Neighbors;
+
+	// Stores a list of followers if the creature is a leader
 	TSet<ACreatureAIController*> Followers;
+
+	// Maximum number of followers a leader should have 
+	int32 MaxFollowers = 5;
+
+	// Called when a creature wants to challenge another creature for leadership
+	void Challenge(ACreatureAIController* AIToChallenge);
+
+	// Called when a challenge has been initiated against the controlled creature
+	void ProcessChallenge(ACreatureAIController* Challenger);
+
+	// Called when a creature wants to subjugate another creature
+	void Subjugate(ACreatureAIController* AIToSubjugate);
+
+	// Called when the creature is being subjugated
+	void ProcessSubjugate(ACreatureAIController* Subjugator);
+
+	// Called when the creature finds a new leader
+	void InitLeadership(ACreatureAIController* Leader);
+
+	// Called to notify other creatures of certain events
+	ECommResponses Notify(ECommRequests Request, ACreatureAIController* Originator);
+
+
 
 public:
 	ACreatureAIController(const FObjectInitializer& ObjectInitializer);
 
+	virtual void Tick(float DeltaSeconds);
+
 	virtual void Possess(APawn* NewPawn) override;
+
+	virtual void UnPossess() override;
 
 	FORCEINLINE bool isSameSpecies(ABaseCreature* OtherCreature)
 	{
@@ -48,21 +98,44 @@ public:
 		return false;
 	}
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Creature Leadership")
-	ABaseCreature* GetLeader();
+	FORCEINLINE ACreatureAIController* GetLeader() 
+	{
+		return Leader;
+	}
 
-	UFUNCTION(BlueprintCallable, Category = "Creature Leadership")
-	void SetLeader(ABaseCreature* NewLeader);
+	FORCEINLINE void SetLeader(ACreatureAIController* NewLeader)
+	{
+		if (NewLeader == NULL || NewLeader == this)
+		{
+			Leader = this;
+			Blackboard->SetValueAsBool(FName("IsLeader"), true);
+			Blackboard->SetValueAsObject(FName("Leader"), NULL);
+		}
+		else
+		{
+			Leader = NewLeader;
+			Blackboard->SetValueAsBool(FName("IsLeader"), false);
+			Blackboard->SetValueAsObject(FName("Leader"), NewLeader);
+		}
+	}
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Creature Leadership")
-	bool IsLeader();
+	FORCEINLINE bool IsLeader()
+	{
+		return Leader == this;
+	}
 
 	FORCEINLINE ABaseCreature* GetControlledCreature()
 	{
 		return ControlledCreature;
 	}
 
-	void NotifyLeader(ELeaderEvent event);
+	FORCEINLINE void SetSpawner(ACreatureSpawner* CreatureSpawner)
+	{
+		Spawner = CreatureSpawner;
+	}
 
-	void ProcessNotify(ELeaderEvent event, ACreatureAIController* Originator);
+	FORCEINLINE ACreatureSpawner* GetSpawner()
+	{
+		return Spawner;
+	}
 };

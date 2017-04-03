@@ -111,13 +111,10 @@ void ACreaturePlayerController::Possession()
 
 			if (OtherCreature) {
 				// Destroy other creature's controller
-				OtherCreature->GetController()->Destroy();
+				OtherCreature->GetController()->Possess(ControlledCharacter);
 
 				// Possess other creature
 				this->Possess(OtherCreature);
-
-				// Make AI control previous creature
-				GetWorld()->SpawnActor<ACreatureAIController>(ControlledCharacter->GetActorLocation(), ControlledCharacter->GetActorRotation())->Possess(ControlledCharacter);
 			}
 		}
 	}

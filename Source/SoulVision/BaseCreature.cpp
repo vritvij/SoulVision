@@ -18,6 +18,11 @@ ABaseCreature::ABaseCreature()
 	// Make the AI Controller possess the creature if its spawned or placed in the world
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
+	// Set Collision preset to Ragdoll
+	GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
+
+
+
 	// Calculate creature defaults
 	CalculateCreatureData();
 
@@ -208,8 +213,13 @@ float ABaseCreature::TakeDamage_Implementation(float Damage, FDamageEvent const&
 	Base.CurrentHealth = FMath::Clamp(Base.CurrentHealth - Damage, 0.f, (float)Base.MaxHealth);
 	if (Base.CurrentHealth == 0)
 	{
-		// If health decreases to 0, exit
-		Destroy();
+		// If health decreases to 0...
+		// ...Enable Ragdoll
+		GetMesh()->SetSimulatePhysics(true);
+		// ...and destroy the actor after 2 seconds
+		FTimerHandle DeathTimer;
+		GetWorldTimerManager().SetTimer(DeathTimer, this, &ABaseCreature::Death, 2.f, false);
+		
 		UE_LOG(General, Log, TEXT("%s fainted"), *Base.Name.ToString());
 	}
 	else 
@@ -218,4 +228,9 @@ float ABaseCreature::TakeDamage_Implementation(float Damage, FDamageEvent const&
 	}
 
 	return Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+}
+
+void ABaseCreature::Death_Implementation()
+{
+	Destroy();
 }
