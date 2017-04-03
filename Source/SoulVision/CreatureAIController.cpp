@@ -6,9 +6,11 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Navigation/CrowdFollowingComponent.h"
 #include "CreatureAIController.h"
 
-ACreatureAIController::ACreatureAIController()
+ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectInitializer)
+	:Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
 {
 	// Create sight config
 	UAISenseConfig_Sight* SightConfig;
@@ -30,6 +32,20 @@ ACreatureAIController::ACreatureAIController()
 	GetAIPerceptionComponent()->OnTargetPerceptionUpdated.AddDynamic(this, &ACreatureAIController::UpdateSenses);
 }
 
+ABaseCreature* ACreatureAIController::GetLeader()
+{
+	return Cast<ABaseCreature>(Blackboard->GetValueAsObject(FName("Leader")));
+}
+
+void ACreatureAIController::SetLeader(ABaseCreature* NewLeader)
+{
+	Blackboard->SetValueAsObject(FName("Leader"), NewLeader);
+}
+
+bool ACreatureAIController::IsLeader()
+{
+	return ControlledCreature == GetLeader();
+}
 
 void ACreatureAIController::Possess(APawn* NewPawn)
 {
@@ -38,89 +54,51 @@ void ACreatureAIController::Possess(APawn* NewPawn)
 	UBehaviorTree* BehaviorTree = Cast<UBehaviorTree>(StaticLoadObject(UBehaviorTree::StaticClass(), NULL, *FString("BehaviorTree'/Game/AI/Creature_BT.Creature_BT'")));
 	RunBehaviorTree(BehaviorTree);
 
-	// Make possessed pawn the leader
-	SetLeader(Cast<ABaseCreature>(NewPawn));
-	
-	bIsInElection = false;
+	// Set controlled pawn
+	ControlledCreature = Cast<ABaseCreature>(NewPawn);
 }
 
 void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 {
-	// UE_LOG(General, Log, TEXT("%s sensed %s"), *GetDebugName(this), *GetDebugName(Actor));
+	ABaseCreature* OtherCreature = Cast<ABaseCreature>(Actor);
 
-	ABaseCreature* Creature = Cast<ABaseCreature>(Actor);
-
-	if (Creature) {
-		// If we loose sight of the creature
-		if (!Stimulus.WasSuccessfullySensed())
+	if (OtherCreature) {
+		// If we see new creature and other creature is not of the same species.... 
+		if (Stimulus.WasSuccessfullySensed() && !isSameSpecies(OtherCreature))
 		{
-			// Remove from neighbor set
-			Neighbors.Remove(Creature);
+			// TODO: Attack
 
-			if (Leader == Creature)
-			{
-				ElectLeader();
-			}
 		}
-		else
-		{
-			// Check if creature is the same species as you
-			if (Creature->GetClass() == GetPawn()->GetClass())
-			{
-				// Add to the neighbor set
-				Neighbors.Add(Creature);
-				
-				// Check if creature is a better leader
-				if (Creature->GetUniqueID() < GetLeader()->GetUniqueID())
-				{
-					// Change leader
-					if (SetLeader(Creature))
-					{
-						UE_LOG(General, Log, TEXT("%s's Leader Changed to %s"), *GetDebugName(GetPawn()), *GetDebugName(Creature));
-					}
-				}				
-			}
-			else
-			{
-				// Make them your enemy
-				// TODO: Choose enemy wisely
-
-			}
-		}
-	}
-}
-
-void ACreatureAIController::ElectLeader()
-{
-	// Find leader only if not in election
-	if (!bIsInElection)
-	{
-		bIsInElection = true;
-
-		ABaseCreature* TempLeader = Cast<ABaseCreature>(GetPawn());
-		if (TempLeader)
-		{
-			for (auto &Creature : Neighbors)
-			{
-				// Other Creature is a better leader
-				if (Creature->GetUniqueID() < GetLeader()->GetUniqueID())
-				{
-					TempLeader = Creature;
-				}
-			}
-
-			// Change leader
-			if (SetLeader(TempLeader))
-			{
-				UE_LOG(General, Log, TEXT("%s's Leader Changed to %s"), *GetDebugName(GetPawn()), *GetDebugName(TempLeader));
-			}
-		}
-
-		bIsInElection = false;
 	}
 }
 
 void ACreatureAIController::Attack()
 {
 
+}
+
+void ACreatureAIController::NotifyLeader(ELeaderEvent event)
+{
+	ACreatureAIController* LeaderController = Cast<ACreatureAIController>(GetLeader()->GetController());
+	if (LeaderController)
+	{
+		LeaderController->ProcessNotify(event, this);
+	}
+}
+
+void ACreatureAIController::ProcessNotify(ELeaderEvent event, ACreatureAIController* Originator)
+{
+	// Prevent Leader from Notifying himself :P
+	if (Originator != this)
+	{
+		switch (event)
+		{
+		case ACreatureAIController::ELeaderEvent::HailLeader:
+			Followers.Add(Originator);
+			break;
+		case ACreatureAIController::ELeaderEvent::ForgetLeader:
+			Followers.Remove(Originator);
+			break;
+		}
+	}
 }

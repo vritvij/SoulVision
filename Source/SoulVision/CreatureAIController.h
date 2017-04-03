@@ -12,40 +12,56 @@ UCLASS()
 class SOULVISION_API ACreatureAIController : public AAIController
 {
 	GENERATED_BODY()
-	
-	// Stores a reference to the leader of the group
-	ABaseCreature* Leader;
 
-	// Stores references for all neighbours in the group
-	TSet<ABaseCreature*> Neighbors;
+private:
+	// Controlled creature reference
+	ABaseCreature* ControlledCreature;
 
-	// Called when a leader is to be elected in the neighboring group
-	void ElectLeader();
-
-	// Election Variables
-	bool bIsInElection;
-
+	// Called when a new actor is perceived
 	UFUNCTION()
 	void UpdateSenses(AActor* Actor, FAIStimulus Stimulus);
 
+	// Called when an attack is to be performed
 	void Attack();
 
+	TSet<ACreatureAIController*> Followers;
+
 public:
-	ACreatureAIController();
+	ACreatureAIController(const FObjectInitializer& ObjectInitializer);
 
 	virtual void Possess(APawn* NewPawn) override;
 
-	FORCEINLINE ABaseCreature* GetLeader()
+	FORCEINLINE bool isSameSpecies(ABaseCreature* OtherCreature)
 	{
-		return Leader;
+		if (ControlledCreature && OtherCreature)
+		{
+			return  ControlledCreature->Base.Name.IsEqual(OtherCreature->Base.Name);
+		}
+
+		return false;
 	}
 
-	FORCEINLINE bool SetLeader(ABaseCreature* NewLeader)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Creature Leadership")
+	ABaseCreature* GetLeader();
+
+	UFUNCTION(BlueprintCallable, Category = "Creature Leadership")
+	void SetLeader(ABaseCreature* NewLeader);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Creature Leadership")
+	bool IsLeader();
+
+	FORCEINLINE ABaseCreature* GetControlledCreature()
 	{
-		Leader = NewLeader;
-
-		Blackboard->SetValueAsObject(FName("Leader"), NewLeader);
-
-		return true;
+		return ControlledCreature;
 	}
+
+	enum class ELeaderEvent : uint8
+	{
+		HailLeader,
+		ForgetLeader
+	};
+
+	void NotifyLeader(ELeaderEvent event);
+
+	void ProcessNotify(ELeaderEvent event, ACreatureAIController* Originator);
 };

@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "DataGeneratorPlayerController.h"
 #include "SoulVisionStructures.h"
 
 class SOULVISION_API FDataGeneratorWorker : public FRunnable

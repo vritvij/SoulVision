@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "SoulVision.h"
+#include "DataGeneratorWorker.h"
 #include "SoulVisionFunctionLibrary.h"
 
 bool USoulVisionFunctionLibrary::SaveStringTextToFile(
@@ -307,4 +308,26 @@ FString USoulVisionFunctionLibrary::FloatArrayToString(const TArray<float>& Floa
 	}
 
 	return String;
+}
+
+void USoulVisionFunctionLibrary::StartDataGeneration(
+	const int32 LevelStart, const int32 LevelEnd, const int32 LevelIncrement,
+	const int32 HealthStart, const int32 HealthEnd, const int32 HealthIncrement,
+	const int32 DistanceStart, const int32 DistanceEnd, const int32 DistanceIncrement,
+	const float FleeBiasMultiplier, const int32 FleeBiasMinimumHealth,
+	const FString FileName
+)
+{
+	FDataGeneratorWorker::GenerateData(
+		LevelStart, LevelEnd, LevelIncrement,
+		HealthStart, HealthEnd, HealthIncrement,
+		DistanceStart, DistanceEnd, DistanceIncrement,
+		FleeBiasMultiplier, FleeBiasMinimumHealth,
+		FileName
+	);
+}
+
+void USoulVisionFunctionLibrary::StopDataGeneration()
+{
+	FDataGeneratorWorker::Shutdown();
 }

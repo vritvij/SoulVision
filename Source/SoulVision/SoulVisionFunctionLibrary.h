@@ -51,7 +51,7 @@ public:
 	{
 		FBaseCreatureData* BaseCreatureData = nullptr;
 
-		UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
+		UDataTable* CreaturesDataTable = LoadObjFromPath(FName("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
 		if (CreaturesDataTable)
 		{
 			//Fetch creature data
@@ -69,7 +69,7 @@ public:
 	{
 		FMoveData* MoveData = nullptr;
 
-		UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
+		UDataTable* MovesDataTable = LoadObjFromPath(FName("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
 		if (MovesDataTable)
 		{
 			MoveData = MovesDataTable->FindRow<FMoveData>(MoveName, TEXT("Fetch Move Data"));
@@ -99,7 +99,7 @@ public:
 	{
 		TArray<FName> CreatureNames;
 
-		UDataTable* CreaturesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
+		UDataTable* CreaturesDataTable = LoadObjFromPath(FName("DataTable'/Game/DataTables/Creatures_DT.Creatures_DT'"));
 		if (CreaturesDataTable)
 		{
 			CreatureNames = CreaturesDataTable->GetRowNames();
@@ -116,7 +116,7 @@ public:
 	{
 		TArray<FName> MoveNames;
 
-		UDataTable* MovesDataTable = LoadObjFromPath(TEXT("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
+		UDataTable* MovesDataTable = LoadObjFromPath(FName("DataTable'/Game/DataTables/Moves_DT.Moves_DT'"));
 		if (MovesDataTable)
 		{
 			MoveNames = MovesDataTable->GetRowNames();
@@ -170,4 +170,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "TensorFlowHelpers")
 	static FString FloatArrayToString(const TArray<float>& FloatArray, const FString& Separator);
+
+	UFUNCTION(BlueprintCallable, Category = "DataGeneration")
+	static void StartDataGeneration(
+		const int32 LevelStart = 5, const int32 LevelEnd = 15, const int32 LevelIncrement = 5, 
+		const int32 HealthStart = 25, const int32 HealthEnd = 100, const int32 HealthIncrement = 25,
+		const int32 DistanceStart = 50, const int32 DistanceEnd = 150, const int32 DistanceIncrement = 50,
+		const float FleeBiasMultiplier = 2.f, const int32 FleeBiasMinimumHealth = 10,
+		const FString FileName = "TrainingData.csv"
+	);
+
+	UFUNCTION(BlueprintCallable, Category = "DataGeneration")
+	static void StopDataGeneration();
 };

@@ -2,6 +2,7 @@
 
 #include "SoulVision.h"
 #include "BaseCreature.h"
+#include "CreatureAIController.h"
 #include "Perception/AIPerceptionSystem.h"
 #include "SoulVisionFunctionLibrary.h"
 
@@ -9,8 +10,13 @@
 // Sets default values
 ABaseCreature::ABaseCreature()
 {
+	AIControllerClass = ACreatureAIController::StaticClass();
+
  	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+
+	// Make the AI Controller possess the creature if its spawned or placed in the world
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	// Calculate creature defaults
 	CalculateCreatureData();
@@ -111,7 +117,7 @@ FLevelChangeData ABaseCreature::UpdateLevel(const int32& NewLevel)
 	//Set Experience
 	USoulVisionFunctionLibrary::GetExperienceAtLevel(Level, Base.Experience);
 	//Set Stats
-	USoulVisionFunctionLibrary::GetStatsAtLevel(Name, Level, Base.MaxHealth, Base.Attack, Base.Defense, Base.Speed);
+	USoulVisionFunctionLibrary::GetStatsAtLevel(Base.Name, Level, Base.MaxHealth, Base.Attack, Base.Defense, Base.Speed);
 	//Set Current Health
 	Base.CurrentHealth += (Base.MaxHealth - OldBase.MaxHealth);
 
@@ -133,7 +139,7 @@ void ABaseCreature::UpdateStatus(const EStatusTypes& Status)
 
 void ABaseCreature::UpdateMoveSet()
 {
-	USoulVisionFunctionLibrary::GetMoveSetAtLevel(Name, Level, Base.MoveSet);
+	USoulVisionFunctionLibrary::GetMoveSetAtLevel(Base.Name, Level, Base.MoveSet);
 }
 
 TArray<FName> ABaseCreature::GetAvailableMoves()
