@@ -8,6 +8,13 @@
 #include "Perception/AIPerceptionTypes.h"
 #include "CreatureAIController.generated.h"
 
+UENUM()
+enum class ELeaderEvent : uint8
+{
+	HailLeader,
+	ForgetLeader
+};
+
 UCLASS()
 class SOULVISION_API ACreatureAIController : public AAIController
 {
@@ -54,12 +61,6 @@ public:
 	{
 		return ControlledCreature;
 	}
-
-	enum class ELeaderEvent : uint8
-	{
-		HailLeader,
-		ForgetLeader
-	};
 
 	void NotifyLeader(ELeaderEvent event);
 

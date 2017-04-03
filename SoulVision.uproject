@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "4.14",
+	"EngineAssociation": "4.15",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -17,7 +17,7 @@
 	"Plugins": [
 		{
 			"Name": "LowEntryExtStdLib",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/846c2ad08f164f45b0335ecebf85361e"
 		}
 	]

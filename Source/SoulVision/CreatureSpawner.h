@@ -15,6 +15,10 @@ class SOULVISION_API ACreatureSpawner : public AActor
 	class UBoxComponent* SpawnerBounds;
 
 	TArray<ACreatureAIController*> SpawnedCreatures;
+
+	FTimerHandle RetrySpawnTimer;
+
+	uint8 SpawnTries = 0;
 	
 public:	
 
@@ -46,10 +50,13 @@ public:
 
 	void InitSpawner();
 
-	void RegisterCreature(ACreatureAIController* CreatureController);
+	FORCEINLINE void RegisterCreature(ACreatureAIController* CreatureController)
+	{
+		SpawnedCreatures.Add(CreatureController);
+	}
 
-	void DeregisterCreature(ACreatureAIController* CreatureController);
-
-	void ElectLeader();
-	
+	FORCEINLINE void DeregisterCreature(ACreatureAIController* CreatureController)
+	{
+		SpawnedCreatures.Remove(CreatureController);	
+	}
 };

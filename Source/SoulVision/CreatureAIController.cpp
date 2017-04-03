@@ -93,10 +93,10 @@ void ACreatureAIController::ProcessNotify(ELeaderEvent event, ACreatureAIControl
 	{
 		switch (event)
 		{
-		case ACreatureAIController::ELeaderEvent::HailLeader:
+		case ELeaderEvent::HailLeader:
 			Followers.Add(Originator);
 			break;
-		case ACreatureAIController::ELeaderEvent::ForgetLeader:
+		case ELeaderEvent::ForgetLeader:
 			Followers.Remove(Originator);
 			break;
 		}

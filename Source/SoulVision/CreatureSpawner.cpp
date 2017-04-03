@@ -46,14 +46,14 @@ void ACreatureSpawner::ValidateSpawnerValues()
 void ACreatureSpawner::InitSpawner()
 {
 	// Don't spawn anything if CreatureToSpawn is not set or it is set to the BaseCreature class
-	if (CreatureToSpawn == NULL || CreatureToSpawn == ABaseCreature::StaticClass())
+	if (CreatureToSpawn == NULL || CreatureToSpawn == ABaseCreature::StaticClass() || SpawnTries > 3)
 		return;
 
 	if (SpawnedCreatures.Num() <= NumberOfCreatures)
 	{
-		int32 SpawnedFailed = 0;
+		int32 SpawnFailed = 0;
 		// Spawn more creatures
-		while (SpawnedCreatures.Num() < NumberOfCreatures && SpawnedFailed < 5)
+		while (SpawnedCreatures.Num() < NumberOfCreatures)
 		{
 			// Trace start and end location
 			FVector Origin = GetActorLocation();
@@ -94,31 +94,16 @@ void ACreatureSpawner::InitSpawner()
 				}
 				else
 				{
-					SpawnedFailed++;
+					SpawnFailed++;
+					if (SpawnFailed >= 5)
+					{
+						SpawnTries++;
+						GetWorldTimerManager().SetTimer(RetrySpawnTimer, this, &ACreatureSpawner::InitSpawner, 5.0f * SpawnTries, false);
+						break;
+					}
 				}
 			}
 		}
 
 	}
-
-	ElectLeader();
-}
-
-void ACreatureSpawner::RegisterCreature(ACreatureAIController* CreatureController)
-{
-	SpawnedCreatures.Add(CreatureController);
-}
-
-void ACreatureSpawner::DeregisterCreature(ACreatureAIController* CreatureController)
-{
-	SpawnedCreatures.Remove(CreatureController);
-	if (CreatureController->IsLeader())
-	{
-		ElectLeader();
-	}
-}
-
-void ACreatureSpawner::ElectLeader()
-{
-
 }
