@@ -37,6 +37,17 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 
 void ACreatureAIController::Tick(float DeltaSeconds)
 {
+	if (IsLeader())
+	{
+		DrawDebugSphere(
+			GetWorld(),
+			GetControlledCreature()->GetActorLocation(),
+			30.f, 10,
+			FColor(0, 255, 0),
+			false, -1.f, 0, 5.f
+		);
+	}
+
 	if (GetLeader())
 	{
 		DrawDebugLine(
