@@ -8,6 +8,7 @@
 #include <istream>
 #include <ostream>
 #include <iostream>
+#include <Python.h>
 
 #include <sstream>
 #include <boost/property_tree/ptree.hpp>
@@ -38,8 +39,8 @@ void read_handler(const boost::system::error_code &ec,
             std::stringstream ss;
             ss << bytes.data();
             read_json(ss, root);
-            int thermostat = root.get<int>("thermostat");
-            std::cout << "\nThermostat: " << thermostat;
+            float flee = root.get<float>("fleeProbability");
+            std::cout << "\nFlee Probability: " << flee;
         }
         tcp_socket.async_read_some(buffer(bytes), read_handler);
     }
@@ -57,12 +58,25 @@ void connect_handler(const boost::system::error_code &ec)
 
         // JSON Body
         ptree root, info;
-        root.put ("some value", "8");
-        root.put ( "message", "value value: value!");
-        info.put("placeholder", "value");
-        info.put("value", "daf!");
-        info.put("module", "value");
-        root.put_child("exception", info);
+        root.put ("deltaLevel", 1);
+        root.put ("attackerType", 1);
+        root.put ("attackerHealth", 1);
+        root.put ("attackerStatus", 1);
+        root.put ("defenderType", 1);
+        root.put ("defenderHealth", 1);
+        root.put ("defenderStatus", 1);
+        root.put ("distance", 1);
+        //root.put ( "message", "value value: value!");
+        int arr[10] = {1,1,1,1,1,1,1,1,1,1};
+        for(int i=0; i<10; i++)
+        {
+            ptree node;
+            node.put("", arr[i]); //create node with just value
+            info.push_back(std::make_pair("", node)); //add this node to the list
+        }
+        root.put_child("moveSet", info);
+        root.put("fleeProbability", 0);
+        root.put("moveProbability", 0);
 
         std::ostringstream buf;
         write_json (buf, root, false);

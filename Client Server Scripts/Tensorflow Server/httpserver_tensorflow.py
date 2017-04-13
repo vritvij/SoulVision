@@ -48,21 +48,22 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         
         # Read JSON Object from request headers
         self.data_string = self.rfile.read(int(self.headers['Content-Length']))
-        data = simplejson.loads(self.data_string.decode())
-        print ("{}".format(data))
+        inputstruct = simplejson.loads(self.data_string.decode())
  
         # Send message back to client
         message = "Hello world in POST!"
+        """
         data = {"user2_proximity": 3, "Wifi_1": -80, "Wifi_2": -40, "Wifi_3": -40, \
                 "thermostat": 18, "light": 0, "hour_of_day": 0, "user3_proximity": 3, \
                 "user1_proximity": 1, "day_of_week": 1, "security": 0, "minute_of_hour": 9, \
                 "Act_1": 1, "Act_2": 0, "Act_3": 0}
+        """
 
+        data = run_graph(inputstruct)
         json_data = simplejson.dumps(data)
         # Write content as utf-8 data
         self.wfile.write(bytes(json_data, "utf8"))
         time1 = datetime.datetime.now()
-        run_graph()
         print('Time taken to run graph', datetime.datetime.now() - time1)
         return
  
@@ -96,7 +97,7 @@ def load_graph():
     new_saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file)) 
     new_saver.restore(sess, checkpoint_file)
             
-def run_graph():
+def run_graph(inputstruct):
     print('in run_graph()')
     
     with graph.as_default():
@@ -114,10 +115,20 @@ def run_graph():
         # get prediction op by name
         prediction = tf.nn.relu(sess.graph.get_operation_by_name("softmax_linear/logits").outputs[0])
 
-        #create dummy features to test
-        features = [[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]]
-        features = numpy.asarray(features)
-        #features.reshape((1,model.INPUT_SIZE))
+        f1 = inputstruct['deltaLevel'] #float
+        f2 = inputstruct['attackerType'] #float
+        f3 = inputstruct['attackerHealth'] #float
+        f4 = inputstruct['attackerStatus'] #float
+        f5 = inputstruct['defenderType'] #float
+        f6 = inputstruct['defenderHealth'] #float
+        f7 = inputstruct['defenderStatus'] #float
+        f8 = inputstruct['distance'] #float
+        f9 = inputstruct['moveSet'] #array of float
+        # array of input features
+        features = [f1,f2,f3,f4,f5,f6,f7,f8]
+        features.extend(f9)
+        features = numpy.array(features).reshape(1,len(features))
+        #print (features)
         print(features.shape)
 
         # create feed dictionary
@@ -127,10 +138,15 @@ def run_graph():
         # values
         output = sess.run(prediction, feed_dict)
         # convert output to numpy array to manipulate
-        output = numpy.array(output).reshape(1,11)
+        output = numpy.array(output).reshape(1 + len(inputstruct['moveSet']),)
         output /= numpy.max(output)
+        
+        # assign output values in json components
+        inputstruct['fleeProbability'] = float(output[0])
+        inputstruct['moveProbability'] = output[1:].tolist()
 
         print(output)
+        return inputstruct
     
 load_graph()
 run()
