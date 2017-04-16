@@ -20,8 +20,7 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
 	SightConfig->SightRadius = 500.f;
 	SightConfig->LoseSightRadius = 1000.f;
-	SightConfig->PeripheralVisionAngleDegrees = 120.f;
-	SightConfig->SetMaxAge(5.f);
+	SightConfig->PeripheralVisionAngleDegrees = 90.f;
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;	
@@ -33,6 +32,10 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 	GetAIPerceptionComponent()->SetDominantSense(SightConfig->GetSenseImplementation());
 
 	GetAIPerceptionComponent()->OnTargetPerceptionUpdated.AddDynamic(this, &ACreatureAIController::UpdateSenses);
+
+	// Setup default values for the loyalty system
+	bCanSubjugate = true;
+	SubjugateTimerValue = 5.f;
 }
 
 void ACreatureAIController::Tick(float DeltaSeconds)
@@ -66,8 +69,13 @@ void ACreatureAIController::Tick(float DeltaSeconds)
 			GetControlledCreature()->GetActorLocation(),
 			n->GetControlledCreature()->GetActorLocation(),
 			FColor(0, 0, 255),
-			false, -1.f, 0, 5.f
+			false, -1.f, 0, 2.f
 		);
+	}
+
+	for (ACreatureAIController* Neighbor : Neighbors)
+	{
+		Neighbor->ProcessChallenge(GetLeader(), 0);
 	}
 }
 
@@ -84,6 +92,10 @@ void ACreatureAIController::Possess(APawn* NewPawn)
 
 	// Initialize the possessed creature as the leader
 	InitLeadership(this);
+
+	// Since subjugations are disabled for certain amount of time after Initializing Leadership...
+	// ... enable subjugation on start
+	AllowSubjugation();
 }
 
 void ACreatureAIController::UnPossess()
@@ -131,7 +143,7 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 			if (OtherController)
 			{
 				Neighbors.Add(OtherController);
-				Challenge(OtherController);
+				// OtherController->ProcessChallenge(GetLeader(), 0);
 			}
 		}
 		else 
@@ -151,58 +163,60 @@ void ACreatureAIController::Attack()
 
 }
 
-void ACreatureAIController::Challenge(ACreatureAIController * AIToChallenge)
+void ACreatureAIController::ProcessChallenge(ACreatureAIController * Challenger, int32 Depth)
 {
-	// Call ProcessChallenge on the AI
-	AIToChallenge->ProcessChallenge(GetLeader());
-}
+	// If Creature is at max communication depth or If Challenger has the same leader or If the creature has disabled subjugation, return
+	if (Depth >= MaxCommunicationDepth || Challenger->GetLeader() == GetLeader() || !bCanSubjugate)
+		return;
 
-void ACreatureAIController::ProcessChallenge(ACreatureAIController * Challenger)
-{
-	// If challenger's power level is greater than current leader's power level, make challenger the leader
-	if (Challenger->GetControlledCreature()->GetPowerLevel() > GetLeader()->GetControlledCreature()->GetPowerLevel())
+	// If challenger's leader's power level is greater than current leader's power level, make challenger the leader
+	if (Challenger->GetLeader()->GetControlledCreature()->GetPowerLevel() > GetLeader()->GetControlledCreature()->GetPowerLevel())
 	{
 		// The controlled creature gets subjugated by the challenger
-		ProcessSubjugate(Challenger);
+		ProcessSubjugate(Challenger->GetLeader(), Depth);
 	}
 	else
 	{
 		// Challenger gets subjugated by the current leader
-		Subjugate(Challenger);
+		Challenger->ProcessSubjugate(GetLeader(), Depth + 1);
 	}
 }
 
-void ACreatureAIController::Subjugate(ACreatureAIController * AIToSubjugate)
+void ACreatureAIController::ProcessSubjugate(ACreatureAIController * Subjugator, int32 Depth)
 {
-	// Call ProcessSubjugate on the AI
-	AIToSubjugate->ProcessSubjugate(GetLeader());
-}
-
-void ACreatureAIController::ProcessSubjugate(ACreatureAIController * Subjugator)
-{
-	// If Subjugator is already the leader, return
-	if (Subjugator == GetLeader())
+	// If Creature is at max communication depth or If Subjugator has the same leader or If the creature has disabled subjugation, return
+	if (Depth >= MaxCommunicationDepth || Subjugator->GetLeader() == GetLeader() || !bCanSubjugate)
 		return;
 
-	// If Leader wants you as a follower...
-	if (Subjugator->Notify(ECommRequests::RequestFollowership, this) == ECommResponses::OK)
+	// Check if Subjugator's leader wants you as a follower...
+	if (Subjugator->GetLeader()->Notify(ECommRequests::RequestFollowership, this) == ECommResponses::OK)
 	{
-		// If it is a Leader, Relinquish leadership i.e disband the followers
-		if (IsLeader())
+		// Store whether you were a leader
+		bool bWasLeader = IsLeader();
+
+		// Store copy of current followers
+		TSet<ACreatureAIController*> FormerFollowers;
+		FormerFollowers.Append(Followers);
+
+		// Make subjugator the leader ...
+		InitLeadership(Subjugator->GetLeader());
+
+		// If creature was a Leader
+		if (bWasLeader)
 		{
-			// Tell all followers that you have relinquished leadership
-			for (auto& Follower : Followers)
+			// ... and extend the challenge to the followers
+			for (ACreatureAIController* Follower : FormerFollowers)
 			{
-				Follower->Notify(ECommRequests::RelinquishLeadership, this);
+				Follower->ProcessSubjugate(Subjugator->GetLeader(), Depth + 1);
 			}
-		}
-	
-		// ... Make subjugator the leader ...
-		InitLeadership(Subjugator);
-		// ... and extend the challenge to the neighbors
-		for (ACreatureAIController* Neighbor : Neighbors)
-		{
-			Challenge(Neighbor);
+			// Tell all remaining followers that you have relinquished leadership
+			for (ACreatureAIController* Follower : FormerFollowers)
+			{
+				if (Follower->GetLeader() != GetLeader())
+				{
+					Follower->Notify(ECommRequests::RelinquishLeadership, this);
+				}
+			}
 		}
 	}
 }
@@ -229,6 +243,11 @@ void ACreatureAIController::InitLeadership(ACreatureAIController * NewLeader)
 	// Set the new leader
 	SetLeader(NewLeader);
 
+	// Show loyalty to new leader by blocking subjugations for a certain amount of time
+	BlockSubjugation();
+
+	// Notify new leader that we have confirmed to become a follower
+	GetLeader()->Notify(ECommRequests::ConfirmFollowership, this);
 }
 
 ECommResponses ACreatureAIController::Notify(ECommRequests Request, ACreatureAIController* Originator)
@@ -250,14 +269,20 @@ ECommResponses ACreatureAIController::Notify(ECommRequests Request, ACreatureAIC
 			}
 			break;
 		case ECommRequests::RequestFollowership:
+			
+			// If Originator is already a follower, don't allow
+			if (Followers.Contains(Originator))
+			{
+				allow = false;
+			}
 			// If we don't have maximum number of followers, allow
-			if (Followers.Num() < MaxFollowers)
+			else if (Followers.Num() < MaxFollowers)
 			{
 				allow = true;
 			}
+			// If we have maximum number of followers, 
 			else
 			{
-				// If we have maximum number of followers, 
 				// Check new followers power level against other followers
 				for (auto& Follower : Followers)
 				{
@@ -273,8 +298,13 @@ ECommResponses ACreatureAIController::Notify(ECommRequests Request, ACreatureAIC
 			}
 			if (allow)
 			{
-				Followers.Add(Originator);
 				return ECommResponses::OK;
+			}
+			break;
+		case ECommRequests::ConfirmFollowership:
+			if (Originator != this)
+			{
+				Followers.Add(Originator);
 			}
 			break;
 		case ECommRequests::AbandonLeader:
@@ -287,4 +317,16 @@ ECommResponses ACreatureAIController::Notify(ECommRequests Request, ACreatureAIC
 	}
 
 	return ECommResponses::N_OK;
+}
+
+void ACreatureAIController::BlockSubjugation()
+{
+	bCanSubjugate = false;
+	GetWorldTimerManager().SetTimer(SubjugateTimeoutHandle, this, &ACreatureAIController::AllowSubjugation ,SubjugateTimerValue, false, -1.f);
+}
+
+void ACreatureAIController::AllowSubjugation()
+{
+	bCanSubjugate = true;
+	GetWorldTimerManager().ClearTimer(SubjugateTimeoutHandle);
 }
