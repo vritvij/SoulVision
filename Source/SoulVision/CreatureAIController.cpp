@@ -64,13 +64,16 @@ void ACreatureAIController::Tick(float DeltaSeconds)
 
 	for (ACreatureAIController* n : Neighbors)
 	{
-		DrawDebugLine(
-			GetWorld(),
-			GetControlledCreature()->GetActorLocation(),
-			n->GetControlledCreature()->GetActorLocation(),
-			FColor(0, 0, 255),
-			false, -1.f, 0, 2.f
-		);
+		if (IsValid(n))
+		{
+			DrawDebugLine(
+				GetWorld(),
+				GetControlledCreature()->GetActorLocation(),
+				n->GetControlledCreature()->GetActorLocation(),
+				FColor(0, 0, 255),
+				false, -1.f, 0, 2.f
+			);
+		}
 	}
 
 	for (ACreatureAIController* Neighbor : Neighbors)
