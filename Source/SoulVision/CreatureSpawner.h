@@ -26,7 +26,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = "Spawner")
 	TSubclassOf<class ABaseCreature> CreatureToSpawn;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawner", meta = (ClampMin = "0", ClampMax = "50", UIMin = "0", UIMax = "50"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawner", meta = (ClampMin = "0", ClampMax = "15", UIMin = "0", UIMax = "15"))
 	int32 NumberOfCreatures = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawner", meta = (ClampMin = "5", ClampMax = "100", UIMin = "5", UIMax = "100"))

@@ -39,6 +39,9 @@ ABaseCreature::ABaseCreature()
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	//CameraBoom->TargetOffset = FVector(0.f, 0.f, 0.f);
+	//CameraBoom->SetRelativeLocation(FVector(-40.f, 0.f, 160.f));
+	//CameraBoom->SetRelativeRotation(FRotator(-10.f, 0.f, 0.f));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.f; // The camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true;

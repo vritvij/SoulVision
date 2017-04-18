@@ -110,6 +110,9 @@ void ACreaturePlayerController::Possession()
 			ABaseCreature* OtherCreature = Cast<ABaseCreature>(HitResult.GetActor());
 
 			if (OtherCreature) {
+				// Smoothly blend camera view targets between the creatures
+				//SetViewTargetWithBlend(OtherCreature, 0.75f);
+
 				// Destroy other creature's controller
 				OtherCreature->GetController()->Possess(ControlledCharacter);
 

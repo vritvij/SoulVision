@@ -15,6 +15,7 @@ enum class ECommRequests : uint8
 	RequestLeadership,
 	RelinquishLeadership,
 	RequestFollowership,
+	ConfirmFollowership,
 	AbandonLeader
 };
 
@@ -59,17 +60,14 @@ private:
 	// Maximum number of followers a leader should have 
 	int32 MaxFollowers = 5;
 
-	// Called when a creature wants to challenge another creature for leadership
-	void Challenge(ACreatureAIController* AIToChallenge);
+	// Max subjugation depth
+	const int32 MaxCommunicationDepth = 5;
 
 	// Called when a challenge has been initiated against the controlled creature
-	void ProcessChallenge(ACreatureAIController* Challenger);
-
-	// Called when a creature wants to subjugate another creature
-	void Subjugate(ACreatureAIController* AIToSubjugate);
+	void ProcessChallenge(ACreatureAIController* Challenger, int32 Depth);
 
 	// Called when the creature is being subjugated
-	void ProcessSubjugate(ACreatureAIController* Subjugator);
+	void ProcessSubjugate(ACreatureAIController* Subjugator, int32 Depth);
 
 	// Called when the creature finds a new leader
 	void InitLeadership(ACreatureAIController* Leader);
@@ -77,6 +75,20 @@ private:
 	// Called to notify other creatures of certain events
 	ECommResponses Notify(ECommRequests Request, ACreatureAIController* Originator);
 
+	// True if creature was recently subjugated, false otherwise
+	bool bCanSubjugate;
+
+	// Timer value used to set Timer that resets the bRecentlySubjugated flag
+	uint32 SubjugateTimerValue;
+
+	// Timer Handle used to reference the Subjugation timer
+	FTimerHandle SubjugateTimeoutHandle;
+	
+	// Called to disable subjugation
+	void BlockSubjugation();
+
+	// Called to enable subjugation
+	void AllowSubjugation();
 
 
 public:
