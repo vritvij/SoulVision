@@ -135,5 +135,44 @@ void ACreaturePlayerController::Attack()
 
 		// Perform Attack
 		ControlledCreature->PerformAttack(SelectedMove);
+		ControlledCreature->AttackCompleteNotify.AddUObject(this, &ACreaturePlayerController::OnAttackComplete);
 	}
+}
+
+void ACreaturePlayerController::OnAttackComplete()
+{
+	UE_LOG(General, Warning, TEXT("Attack Complete"));
+}
+
+bool ACreaturePlayerController::InBattle_Implementation()
+{
+	return bInBattle;
+}
+
+bool ACreaturePlayerController::StartBattle_Implementation(AController* Controller, APawn* Creature)
+{
+	// Only start battle if not in battle
+	if (!bInBattle && Controller && Creature)
+	{
+		bInBattle = true;
+		EnemyController = Controller;
+		EnemyCreature = Cast<ABaseCreature>(Creature);
+		
+		return true;
+	}
+	else return false;
+}
+
+bool ACreaturePlayerController::EndBattle_Implementation(AController* Controller, APawn* Creature)
+{
+	// Only end battle if in battle
+	if (bInBattle && Controller && Creature)
+	{
+		bInBattle = false;
+		EnemyController = NULL;
+		EnemyCreature = NULL;
+
+		return true;
+	}
+	else return false;
 }

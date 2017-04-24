@@ -4,13 +4,14 @@
 
 #include "GameFramework/PlayerController.h"
 #include "BaseCreature.h"
+#include "BattleInterface.h"
 #include "CreaturePlayerController.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class SOULVISION_API ACreaturePlayerController : public APlayerController
+class SOULVISION_API ACreaturePlayerController : public APlayerController, public IBattleInterface
 {
 	GENERATED_BODY()
 	
@@ -34,11 +35,22 @@ protected:
 	// Called for attack input
 	void Attack();
 
+	// Called when attack is complete
+	UFUNCTION()
+	void OnAttackComplete();
+
 	// Called via input to turn at a given rate
 	void TurnAtRate(float Rate);
 
 	// Called via input to turn look up/down at a given rate
 	void LookUpAtRate(float Rate);
+
+	// Battle semaphore
+	bool bInBattle = false;
+
+	// Enemy
+	AController* EnemyController = NULL;
+	ABaseCreature* EnemyCreature = NULL;
 
 public:
 	ACreaturePlayerController();
@@ -51,4 +63,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseLookUpRate;
 	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool InBattle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool StartBattle(AController* Controller, APawn* Creature);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool EndBattle(AController* Controller, APawn* Creature);
 };

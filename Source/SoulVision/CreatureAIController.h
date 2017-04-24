@@ -42,10 +42,6 @@ private:
 	UFUNCTION()
 	void UpdateSenses(AActor* Actor, FAIStimulus Stimulus);
 
-	// Called when an attack is to be performed
-	void Attack();
-
-
 	/* Depth-Limited Ripple Leader Election Algorithm */
 
 	// Store reference to Leader
@@ -90,6 +86,10 @@ private:
 	// Called to enable subjugation
 	void AllowSubjugation();
 
+
+	/* Battle Mechanics */
+
+	ABaseCreature* Enemy;
 
 public:
 	ACreatureAIController(const FObjectInitializer& ObjectInitializer);
@@ -149,5 +149,24 @@ public:
 	FORCEINLINE ACreatureSpawner* GetSpawner()
 	{
 		return Spawner;
+	}
+
+	FORCEINLINE void SetEnemy(ABaseCreature* NewEnemy)
+	{
+		this->Enemy = Enemy;
+		Blackboard->SetValueAsObject(FName("Enemy"), NewEnemy);
+		Blackboard->SetValueAsObject(FName("EnemyController"), NewEnemy->GetController());
+	}
+
+	FORCEINLINE ABaseCreature* GetEnemy()
+	{
+		return Enemy;
+	}
+
+	FORCEINLINE void ClearEnemy()
+	{
+		this->Enemy = NULL;
+		Blackboard->SetValueAsObject(FName("Enemy"), NULL);
+		Blackboard->SetValueAsObject(FName("EnemyController"), NULL);
 	}
 };

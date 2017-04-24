@@ -12,3 +12,5 @@ Saved
 *.xcworkspace
 *.blend1
 *.pyc
+.vs
+*.ipch

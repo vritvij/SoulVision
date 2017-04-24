@@ -8,7 +8,8 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Navigation/CrowdFollowingComponent.h"
 #include "CreatureAIController.h"
-
+#include "SoulVisionStructures.h"
+ 
 ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
 {
@@ -138,6 +139,8 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 			if (!isSameSpecies(OtherCreature))
 			{
 				// TODO: Attack
+				SetEnemy(OtherCreature);
+				Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Sensed);
 				return;
 			}
 
@@ -151,6 +154,13 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 		}
 		else 
 		{
+			// TODO: Clear Enemy only if not in battle
+			// Clear Enemy if out of sight
+			if (GetEnemy() == OtherCreature)
+			{
+				ClearEnemy();
+			}
+
 			// Lose track of old neighbor
 			ACreatureAIController* OtherController = Cast<ACreatureAIController>(OtherCreature->GetController());
 			if (OtherController)
@@ -159,11 +169,6 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 			}
 		}
 	}
-}
-
-void ACreatureAIController::Attack()
-{
-
 }
 
 void ACreatureAIController::ProcessChallenge(ACreatureAIController * Challenger, int32 Depth)

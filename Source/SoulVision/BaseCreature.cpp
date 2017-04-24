@@ -211,6 +211,14 @@ void ABaseCreature::PerformAttack_Implementation(FName Move)
 	UE_LOG(General, Log, TEXT("%s Failed"), *Move.ToString());
 }
 
+void ABaseCreature::FinishAttack()
+{
+	if (AttackCompleteNotify.IsBound())
+	{
+		AttackCompleteNotify.Broadcast();
+	}
+}
+
 float ABaseCreature::TakeDamage_Implementation(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	Base.CurrentHealth = FMath::Clamp(Base.CurrentHealth - Damage, 0.f, (float)Base.MaxHealth);

@@ -47,6 +47,16 @@ enum class ETargetTypes : uint8
 	Max			UMETA(Hidden)
 };
 
+UENUM(BlueprintType)
+enum class ECreatureBehaviorStates : uint8
+{
+	Wander		UMETA(DisplayName = "Wander"),
+	Sensed		UMETA(DisplayName = "Sensed"),
+	Attack		UMETA(DisplayName = "Attack"),
+
+	Max			UMETA(Hidden)
+};
+
 
 USTRUCT(BlueprintType, meta = (ToolTip = "Data structure for the creature instance"))
 struct FLearnableMove

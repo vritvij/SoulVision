@@ -6,7 +6,7 @@ public class SoulVision : ModuleRules
 {
 	public SoulVision(TargetInfo Target)
 	{
-		PublicDependencyModuleNames.AddRange(new string[] {"Core", "CoreUObject", "Engine", "InputCore", "AIModule"});
+		PublicDependencyModuleNames.AddRange(new string[] {"Core", "CoreUObject", "Engine", "InputCore", "AIModule", "Http", "Json", "JsonUtilities", "GameplayTasks" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

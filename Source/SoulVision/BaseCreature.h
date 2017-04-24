@@ -6,11 +6,13 @@
 #include "SoulVisionStructures.h"
 #include "BaseCreature.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FNotifySignature);
+
 UCLASS(Blueprintable)
 class SOULVISION_API ABaseCreature : public ACharacter
 {
 	GENERATED_BODY()
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
@@ -18,7 +20,7 @@ class SOULVISION_API ABaseCreature : public ACharacter
 	class UCameraComponent* FollowCamera;
 
 	void CalculateCreatureData();
-	
+
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Creature Data")
@@ -61,9 +63,15 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Controls")
 	void MoveRight(float Value);
-	
+		
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Controls")
 	void PerformAttack(FName Move);
+
+	// Used to run a function after the attack has finished executing
+	FNotifySignature AttackCompleteNotify;
+
+	UFUNCTION(BlueprintCallable, Category = "Creature Controls")
+	void FinishAttack();
 
 	UFUNCTION(BlueprintCallable, Category = "Creature Functions")
 	void UpdateBase(const FCreatureData& NewBase);
@@ -85,4 +93,6 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Creature Damage")
 	void Death();
+
+
 };
