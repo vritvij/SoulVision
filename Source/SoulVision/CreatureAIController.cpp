@@ -8,6 +8,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Navigation/CrowdFollowingComponent.h"
 #include "CreatureAIController.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "SoulVisionStructures.h"
  
 ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectInitializer)
@@ -19,9 +20,10 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 	// Create sight config
 	UAISenseConfig_Sight* SightConfig;
 	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
-	SightConfig->SightRadius = 500.f;
-	SightConfig->LoseSightRadius = 1000.f;
-	SightConfig->PeripheralVisionAngleDegrees = 90.f;
+	SightConfig->SightRadius = 1000.f;
+	SightConfig->LoseSightRadius = 1500.f;
+	SightConfig->PeripheralVisionAngleDegrees = 120.f;
+	SightConfig->SetMaxAge(2.f);
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;	
@@ -41,6 +43,7 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 
 void ACreatureAIController::Tick(float DeltaSeconds)
 {
+
 	if (IsLeader())
 	{
 		DrawDebugSphere(
@@ -77,9 +80,51 @@ void ACreatureAIController::Tick(float DeltaSeconds)
 		}
 	}
 
-	for (ACreatureAIController* Neighbor : Neighbors)
+	// Elect leaders or challenge creatures only when not in battle
+	if (!InBattle())
 	{
-		Neighbor->ProcessChallenge(GetLeader(), 0);
+		// Challenge Neighbors every tick
+		for (ACreatureAIController* Neighbor : Neighbors)
+		{
+			Neighbor->ProcessChallenge(GetLeader(), 0);
+		}
+
+		// Request to battle other species every tick
+		for (ABaseCreature* Creature : CreatureSet)
+		{
+			// Challenge creatures not of the same species
+			if (!isSameSpecies(Creature))
+			{
+				RememberCreature(Creature);
+			}
+		}
+	}
+
+	// Battle Tick
+	if (InBattle())
+	{
+		if (EnemyCreature)
+		{
+			// Update battlefield location
+			FVector BattlefieldLocation = (ControlledCreature->GetActorLocation() + EnemyCreature->GetActorLocation()) / 2;
+			Blackboard->SetValueAsVector(FName("BattlefieldLocation"), BattlefieldLocation);
+
+			// Set Last seen location
+			Blackboard->SetValueAsVector(FName("EnemyLastKnownLocation"), EnemyCreature->GetActorLocation());
+
+			// Rotate to face the enemy
+			FVector Start = ControlledCreature->GetActorLocation();
+			FVector Target = EnemyCreature->GetActorLocation();
+
+			FRotator CurrentRotation = ControlledCreature->GetActorRotation();
+			FRotator DesiredRotation = UKismetMathLibrary::FindLookAtRotation(Start, Target);
+
+			FRotator UpdatedRotation = UKismetMathLibrary::RInterpTo(CurrentRotation, DesiredRotation, GetWorld()->GetDeltaSeconds(), 5.f);
+			UpdatedRotation.Roll = CurrentRotation.Roll;
+			UpdatedRotation.Pitch = CurrentRotation.Pitch;
+
+			ControlledCreature->SetActorRotation(UpdatedRotation);
+		}
 	}
 }
 
@@ -122,6 +167,7 @@ void ACreatureAIController::UnPossess()
 	// Clear variables
 	Neighbors.Empty();
 	Followers.Empty();
+	CreatureSet.Empty();
 
 	Super::UnPossess();
 }
@@ -135,18 +181,11 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 		// If we see new creature
 		if (Stimulus.WasSuccessfullySensed())
 		{
-			// other creature is not of the same species
-			if (!isSameSpecies(OtherCreature))
-			{
-				// TODO: Attack
-				SetEnemy(OtherCreature);
-				Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Sensed);
-				return;
-			}
+			CreatureSet.Add(OtherCreature);
 
 			// Keep track of new neighbor
 			ACreatureAIController* OtherController = Cast<ACreatureAIController>(OtherCreature->GetController());
-			if (OtherController)
+			if (isSameSpecies(OtherCreature) && OtherController)
 			{
 				Neighbors.Add(OtherController);
 				// OtherController->ProcessChallenge(GetLeader(), 0);
@@ -154,6 +193,8 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 		}
 		else 
 		{
+			CreatureSet.Remove(OtherCreature);
+
 			// TODO: Clear Enemy only if not in battle
 			// Clear Enemy if out of sight
 			if (GetEnemy() == OtherCreature)
@@ -174,7 +215,7 @@ void ACreatureAIController::UpdateSenses(AActor* Actor, FAIStimulus Stimulus)
 void ACreatureAIController::ProcessChallenge(ACreatureAIController * Challenger, int32 Depth)
 {
 	// If Creature is at max communication depth or If Challenger has the same leader or If the creature has disabled subjugation, return
-	if (Depth >= MaxCommunicationDepth || Challenger->GetLeader() == GetLeader() || !bCanSubjugate)
+	if (Depth >= MaxCommunicationDepth || Challenger->GetLeader() == GetLeader() || !bCanSubjugate || bInBattle)
 		return;
 
 	// If challenger's leader's power level is greater than current leader's power level, make challenger the leader
@@ -193,7 +234,7 @@ void ACreatureAIController::ProcessChallenge(ACreatureAIController * Challenger,
 void ACreatureAIController::ProcessSubjugate(ACreatureAIController * Subjugator, int32 Depth)
 {
 	// If Creature is at max communication depth or If Subjugator has the same leader or If the creature has disabled subjugation, return
-	if (Depth >= MaxCommunicationDepth || Subjugator->GetLeader() == GetLeader() || !bCanSubjugate)
+	if (Depth >= MaxCommunicationDepth || Subjugator->GetLeader() == GetLeader() || !bCanSubjugate || bInBattle)
 		return;
 
 	// Check if Subjugator's leader wants you as a follower...
@@ -337,4 +378,112 @@ void ACreatureAIController::AllowSubjugation()
 {
 	bCanSubjugate = true;
 	GetWorldTimerManager().ClearTimer(SubjugateTimeoutHandle);
+}
+
+void ACreatureAIController::RememberCreature(ABaseCreature* Creature)
+{
+	// Only sense creatures while not in battle
+	if (Blackboard->GetValueAsEnum(FName("State")) != (uint8)ECreatureBehaviorStates::Battle)
+	{
+		SetEnemy(Creature);
+		Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Sensed);
+	}
+}
+
+void ACreatureAIController::ForgetCreature(ABaseCreature* Creature)
+{
+	ClearEnemy();
+	Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Wander);
+}
+
+bool ACreatureAIController::InBattle_Implementation()
+{
+	return bInBattle;
+}
+
+bool ACreatureAIController::StartBattle_Implementation(AController* Controller, ABaseCreature* Creature)
+{
+	// Only start battle if not in battle
+	if (!bInBattle && Controller && Creature)
+	{
+		bInBattle = true;
+		SetEnemy(Creature);
+		Blackboard->SetValueAsObject(FName("EnemyController"), Controller);
+		Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Battle);
+
+		// If leader, free all followers
+		if (IsLeader())
+		{
+			for (ACreatureAIController* Follower : Followers)
+			{
+				Follower->Notify(ECommRequests::RelinquishLeadership, this);
+			}
+		}
+		else {
+			// Abondon leader
+			GetLeader()->Notify(ECommRequests::AbandonLeader, this);
+			InitLeadership(this);
+		}
+
+		return true;
+	}
+	else return false;
+}
+
+bool ACreatureAIController::EndBattle_Implementation()
+{
+	// Only end battle if in battle
+	if (bInBattle)
+	{
+		bInBattle = false;
+		ClearEnemy();
+		Blackboard->SetValueAsObject(FName("EnemyController"), NULL);
+		Blackboard->SetValueAsEnum(FName("State"), (uint8)ECreatureBehaviorStates::Wander);
+
+		return true;
+	}
+	else return false;
+}
+
+void ACreatureAIController::Death_Implementation()
+{
+	if (bInBattle)
+	{
+		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
+		Controller->Execute_EndBattle(EnemyController);
+		EndBattle();
+	}
+
+	if (GetSpawner())
+	{
+		GetSpawner()->DeregisterCreature();
+	}
+}
+
+void ACreatureAIController::Possessed_Implementation()
+{
+	if (bInBattle)
+	{
+		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
+		Controller->Execute_EndBattle(EnemyController);
+		EndBattle();
+	}
+}
+
+void ACreatureAIController::NotifyIntentToMove(FVector Location)
+{
+	for (ACreatureAIController* Follower : Followers)
+	{
+		Follower->Blackboard->SetValueAsVector(FName("NextLeaderPosition"), Location);
+	}
+}
+
+FRotator ACreatureAIController::GetControlRotation() const
+{
+	if (ControlledCreature == NULL)
+	{
+		return FRotator();
+	}
+
+	return FRotator(0.f, ControlledCreature->GetActorRotation().Yaw, 0.f);
 }

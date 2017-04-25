@@ -62,5 +62,6 @@ public:
 	FORCEINLINE void DeregisterCreature()
 	{
 		SpawnedCreatures--;	
+		InitSpawner();
 	}
 };

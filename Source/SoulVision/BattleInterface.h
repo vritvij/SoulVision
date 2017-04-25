@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "GameFramework/Controller.h"
+#include "BaseCreature.h"
 #include "BattleInterface.generated.h"
 
 // This class does not need to be modified.
@@ -17,16 +19,27 @@ class UBattleInterface : public UInterface
 class SOULVISION_API IBattleInterface
 {
 	GENERATED_IINTERFACE_BODY()
-
-	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
+	
 public:
+	// Battle semaphore
+	bool bInBattle = false;
+
+	// Enemy
+	AController* EnemyController = NULL;
+	ABaseCreature* EnemyCreature = NULL;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
 	bool InBattle();
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
-	bool StartBattle(AController* Controller, APawn* Creature);
+	bool StartBattle(AController* Controller, ABaseCreature* Creature);
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
-	bool EndBattle(AController* Controller, APawn* Creature);
+	bool EndBattle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Death();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Possessed();
 };

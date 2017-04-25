@@ -3,6 +3,7 @@
 #include "SoulVision.h"
 #include "CreatureAIController.h"
 #include "CreaturePlayerController.h"
+#include "SoulVisionFunctionLibrary.h"
 
 ACreaturePlayerController::ACreaturePlayerController()
 {
@@ -109,18 +110,59 @@ void ACreaturePlayerController::Possession()
 			// Only possess creatures
 			ABaseCreature* OtherCreature = Cast<ABaseCreature>(HitResult.GetActor());
 
-			if (OtherCreature) {
-				// Smoothly blend camera view targets between the creatures
-				//SetViewTargetWithBlend(OtherCreature, 0.75f);
+			if (OtherCreature)
+			{
+				// If we are in battle with the creature
+				if (InBattle() && EnemyCreature == OtherCreature)
+				{
+					// Check possibility of possession
+					int32 SuccessfulTries;
+					if (USoulVisionFunctionLibrary::CanPossess(OtherCreature->Base, 3, SuccessfulTries))
+					{
+						float TweenTime = 0.75f;
 
-				// Destroy other creature's controller
-				OtherCreature->GetController()->Possess(ControlledCharacter);
+						// Smoothly blend camera view targets between the creatures
+						SetViewTargetWithBlend(OtherCreature, TweenTime);
 
-				// Possess other creature
-				this->Possess(OtherCreature);
+						PossessionTweenDelegate.BindUFunction(this, FName("OnPossessionAnimationComplete"), OtherCreature);
+
+						GetWorldTimerManager().SetTimer(PossessionTweenTimer, PossessionTweenDelegate, TweenTime, false);
+					}
+					else {
+						UE_LOG(General, Log, TEXT("Possession Failed"));
+					}
+				}
+				else if(!InBattle())
+				{
+					// If we are not in battle, start one with the creature
+
+					ABaseCreature* ControlledCreature = Cast<ABaseCreature>(GetPawn());
+					AController* OtherController = OtherCreature->GetController();
+					
+					IBattleInterface* Controller = Cast<IBattleInterface>(OtherController);
+					if (Controller && ControlledCreature && (Controller->Execute_StartBattle(OtherController, this, ControlledCreature)))
+					{
+						StartBattle(OtherController, OtherCreature);
+					}
+				}
 			}
 		}
 	}
+}
+
+void ACreaturePlayerController::OnPossessionAnimationComplete(ABaseCreature* OtherCreature)
+{
+	AController* OtherController = OtherCreature->GetController();
+	OtherController->Possess(GetPawn());
+
+	IBattleInterface* Controller = Cast<IBattleInterface>(OtherController);
+	if (Controller)
+	{
+		Controller->Execute_Possessed(OtherController);
+	}
+
+	// Possess other creature
+	this->Possess(OtherCreature);
 }
 
 void ACreaturePlayerController::Attack()
@@ -149,24 +191,24 @@ bool ACreaturePlayerController::InBattle_Implementation()
 	return bInBattle;
 }
 
-bool ACreaturePlayerController::StartBattle_Implementation(AController* Controller, APawn* Creature)
+bool ACreaturePlayerController::StartBattle_Implementation(AController* Controller, ABaseCreature* Creature)
 {
 	// Only start battle if not in battle
 	if (!bInBattle && Controller && Creature)
 	{
 		bInBattle = true;
 		EnemyController = Controller;
-		EnemyCreature = Cast<ABaseCreature>(Creature);
+		EnemyCreature = Creature;
 		
 		return true;
 	}
 	else return false;
 }
 
-bool ACreaturePlayerController::EndBattle_Implementation(AController* Controller, APawn* Creature)
+bool ACreaturePlayerController::EndBattle_Implementation()
 {
 	// Only end battle if in battle
-	if (bInBattle && Controller && Creature)
+	if (bInBattle)
 	{
 		bInBattle = false;
 		EnemyController = NULL;
@@ -175,4 +217,20 @@ bool ACreaturePlayerController::EndBattle_Implementation(AController* Controller
 		return true;
 	}
 	else return false;
+}
+
+void ACreaturePlayerController::Death_Implementation()
+{
+	if (bInBattle)
+	{
+		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
+		Controller->Execute_EndBattle(EnemyController);
+		EndBattle();
+	}
+}
+
+void ACreaturePlayerController::Possessed_Implementation()
+{
+	// Player can never be possessed
+	return;
 }

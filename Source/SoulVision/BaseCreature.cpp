@@ -4,6 +4,7 @@
 #include "BaseCreature.h"
 #include "CreatureAIController.h"
 #include "Perception/AIPerceptionSystem.h"
+#include "BattleInterface.h"
 #include "SoulVisionFunctionLibrary.h"
 
 
@@ -50,8 +51,6 @@ ABaseCreature::ABaseCreature()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false;
-
-	// Register as sense stimulus
 }
 
 void ABaseCreature::MoveForward_Implementation(float Value)
@@ -243,5 +242,11 @@ float ABaseCreature::TakeDamage_Implementation(float Damage, FDamageEvent const&
 
 void ABaseCreature::Death_Implementation()
 {
+	IBattleInterface* Controller = Cast<IBattleInterface>(GetController());
+	if (Controller)
+	{
+		Controller->Execute_Death(GetController());
+	}
+	
 	Destroy();
 }

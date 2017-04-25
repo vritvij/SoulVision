@@ -7,6 +7,7 @@
 #include "CreatureSpawner.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionTypes.h"
+#include "BattleInterface.h"
 #include "CreatureAIController.generated.h"
 
 UENUM()
@@ -27,7 +28,7 @@ enum class ECommResponses : uint8
 };
 
 UCLASS()
-class SOULVISION_API ACreatureAIController : public AAIController
+class SOULVISION_API ACreatureAIController : public AAIController, public IBattleInterface
 {
 	GENERATED_BODY()
 
@@ -86,10 +87,13 @@ private:
 	// Called to enable subjugation
 	void AllowSubjugation();
 
+	// Maintains list of neighboring creatures (same species and other species)
+	TSet<ABaseCreature*> CreatureSet;
 
-	/* Battle Mechanics */
 
-	ABaseCreature* Enemy;
+
+	// Fix rotation problem
+	virtual FRotator GetControlRotation() const override;
 
 public:
 	ACreatureAIController(const FObjectInitializer& ObjectInitializer);
@@ -153,20 +157,44 @@ public:
 
 	FORCEINLINE void SetEnemy(ABaseCreature* NewEnemy)
 	{
-		this->Enemy = Enemy;
+		EnemyCreature = NewEnemy;
+		EnemyController = NewEnemy->GetController();
 		Blackboard->SetValueAsObject(FName("Enemy"), NewEnemy);
-		Blackboard->SetValueAsObject(FName("EnemyController"), NewEnemy->GetController());
 	}
 
 	FORCEINLINE ABaseCreature* GetEnemy()
 	{
-		return Enemy;
+		return EnemyCreature;
 	}
 
 	FORCEINLINE void ClearEnemy()
 	{
-		this->Enemy = NULL;
+		EnemyCreature = NULL;
+		EnemyController = NULL;
 		Blackboard->SetValueAsObject(FName("Enemy"), NULL);
-		Blackboard->SetValueAsObject(FName("EnemyController"), NULL);
 	}
+
+	UFUNCTION(BlueprintCallable, Category = "Enemy Detection")
+	void RememberCreature(ABaseCreature* Creature);
+	
+	UFUNCTION(BlueprintCallable, Category = "Enemy Detection")
+	void ForgetCreature(ABaseCreature* Creature);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool InBattle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool StartBattle(AController* Controller, ABaseCreature* Creature);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	bool EndBattle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Death();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Possessed();
+
+	UFUNCTION(BlueprintCallable, Category = "Leader Functions")
+	void NotifyIntentToMove(FVector Location);
 };

@@ -45,12 +45,11 @@ protected:
 	// Called via input to turn look up/down at a given rate
 	void LookUpAtRate(float Rate);
 
-	// Battle semaphore
-	bool bInBattle = false;
+	FTimerDelegate PossessionTweenDelegate;
+	FTimerHandle PossessionTweenTimer;
 
-	// Enemy
-	AController* EnemyController = NULL;
-	ABaseCreature* EnemyCreature = NULL;
+	UFUNCTION()
+	void OnPossessionAnimationComplete(ABaseCreature* OtherCreature);
 
 public:
 	ACreaturePlayerController();
@@ -67,8 +66,14 @@ public:
 	bool InBattle();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
-	bool StartBattle(AController* Controller, APawn* Creature);
+	bool StartBattle(AController* Controller, ABaseCreature* Creature);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
-	bool EndBattle(AController* Controller, APawn* Creature);
+	bool EndBattle();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Death();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
+	void Possessed();
 };

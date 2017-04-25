@@ -52,7 +52,7 @@ enum class ECreatureBehaviorStates : uint8
 {
 	Wander		UMETA(DisplayName = "Wander"),
 	Sensed		UMETA(DisplayName = "Sensed"),
-	Attack		UMETA(DisplayName = "Attack"),
+	Battle		UMETA(DisplayName = "Battle"),
 
 	Max			UMETA(Hidden)
 };
