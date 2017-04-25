@@ -450,8 +450,10 @@ void ACreatureAIController::Death_Implementation()
 	if (bInBattle)
 	{
 		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
-		Controller->Execute_EndBattle(EnemyController);
-		EndBattle();
+		if (Controller)
+		{
+			Controller->Execute_EndBattle(EnemyController);
+		}
 	}
 
 	if (GetSpawner())
@@ -465,8 +467,11 @@ void ACreatureAIController::Possessed_Implementation()
 	if (bInBattle)
 	{
 		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
-		Controller->Execute_EndBattle(EnemyController);
-		EndBattle();
+		if (Controller)
+		{
+			Controller->Execute_EndBattle(EnemyController);
+			EndBattle();
+		}
 	}
 }
 

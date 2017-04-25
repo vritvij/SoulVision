@@ -224,8 +224,10 @@ void ACreaturePlayerController::Death_Implementation()
 	if (bInBattle)
 	{
 		IBattleInterface* Controller = Cast<IBattleInterface>(EnemyController);
-		Controller->Execute_EndBattle(EnemyController);
-		EndBattle();
+		if (Controller)
+		{
+			Controller->Execute_EndBattle(EnemyController);
+		}
 	}
 }
 
