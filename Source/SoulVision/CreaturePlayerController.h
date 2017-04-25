@@ -51,6 +51,18 @@ protected:
 	UFUNCTION()
 	void OnPossessionAnimationComplete(ABaseCreature* OtherCreature);
 
+	/* Move selection functionality*/
+
+	// Variable for storing selected Move
+	uint8 SelectedMoveIndex = 0;
+
+	void PreviousMove();
+
+	void NextMove();
+
+	UPROPERTY(VisibleAnywhere, Category = "Test")
+	bool bIsAttacking = false;	
+
 public:
 	ACreaturePlayerController();
 
@@ -76,4 +88,10 @@ public:
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
 	void Possessed();
+
+	UFUNCTION(BlueprintCallable, Category = "Battle Interface")
+	ABaseCreature* GetEnemyCreature();
+
+	UFUNCTION(BlueprintCallable, Category = "Battle Interface")
+	FName GetSelectedMove();
 };

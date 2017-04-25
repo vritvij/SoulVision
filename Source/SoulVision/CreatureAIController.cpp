@@ -44,6 +44,7 @@ ACreatureAIController::ACreatureAIController(const FObjectInitializer& ObjectIni
 void ACreatureAIController::Tick(float DeltaSeconds)
 {
 
+	/*
 	if (IsLeader())
 	{
 		DrawDebugSphere(
@@ -79,6 +80,7 @@ void ACreatureAIController::Tick(float DeltaSeconds)
 			);
 		}
 	}
+	*/
 
 	// Elect leaders or challenge creatures only when not in battle
 	if (!InBattle())

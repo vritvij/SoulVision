@@ -27,7 +27,7 @@ public:
 	// Enemy
 	AController* EnemyController = NULL;
 	ABaseCreature* EnemyCreature = NULL;
-
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Battle Interface")
 	bool InBattle();
 	

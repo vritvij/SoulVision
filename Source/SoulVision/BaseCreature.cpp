@@ -242,10 +242,10 @@ float ABaseCreature::TakeDamage_Implementation(float Damage, FDamageEvent const&
 
 void ABaseCreature::Death_Implementation()
 {
-	IBattleInterface* Controller = Cast<IBattleInterface>(GetController());
-	if (Controller)
+	IBattleInterface* temp = Cast<IBattleInterface>(GetController());
+	if (temp)
 	{
-		Controller->Execute_Death(GetController());
+		temp->Execute_Death(GetController());
 	}
 	
 	Destroy();

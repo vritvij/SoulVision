@@ -25,6 +25,8 @@ void ACreaturePlayerController::SetupInputComponent()
 
 	InputComponent->BindAction("Jump", IE_Pressed, this, &ACreaturePlayerController::StartJump);
 	InputComponent->BindAction("Jump", IE_Released, this, &ACreaturePlayerController::StopJump);
+	InputComponent->BindAction("PreviousMove", IE_Pressed, this, &ACreaturePlayerController::PreviousMove);
+	InputComponent->BindAction("NextMove", IE_Pressed, this, &ACreaturePlayerController::NextMove);
 
 	// Action input bindings
 	InputComponent->BindAction("Possess", IE_Pressed, this, &ACreaturePlayerController::Possession);
@@ -152,6 +154,8 @@ void ACreaturePlayerController::Possession()
 
 void ACreaturePlayerController::OnPossessionAnimationComplete(ABaseCreature* OtherCreature)
 {
+	SelectedMoveIndex = 0;
+
 	AController* OtherController = OtherCreature->GetController();
 	OtherController->Possess(GetPawn());
 
@@ -169,20 +173,24 @@ void ACreaturePlayerController::Attack()
 {
 	ABaseCreature* ControlledCreature = Cast<ABaseCreature>(this->GetCharacter());
 
-	if (ControlledCreature) {
+	if (ControlledCreature && !bIsAttacking) {
 		// Select Attack
 		TArray<FName> Moves = ControlledCreature->GetAvailableMoves();
-		FName SelectedMove = Moves[FMath::RandRange(0, Moves.Num() - 1)];
+		FName SelectedMove = Moves[SelectedMoveIndex];
 		UE_LOG(General, Log, TEXT("Attacking using: %s"), *SelectedMove.ToString());
+
+		bIsAttacking = true;
 
 		// Perform Attack
 		ControlledCreature->PerformAttack(SelectedMove);
-		ControlledCreature->AttackCompleteNotify.AddUObject(this, &ACreaturePlayerController::OnAttackComplete);
+		// ControlledCreature->AttackCompleteNotify.AddUObject(this, &ACreaturePlayerController::OnAttackComplete);
+		ControlledCreature->AttackCompleteNotify.AddUFunction(this, FName("OnAttackComplete"));
 	}
 }
 
 void ACreaturePlayerController::OnAttackComplete()
 {
+	bIsAttacking = false;
 	UE_LOG(General, Warning, TEXT("Attack Complete"));
 }
 
@@ -235,4 +243,41 @@ void ACreaturePlayerController::Possessed_Implementation()
 {
 	// Player can never be possessed
 	return;
+}
+
+void ACreaturePlayerController::PreviousMove()
+{
+	ABaseCreature* ControlledCreature = Cast<ABaseCreature>(GetPawn());
+	if (ControlledCreature)
+	{
+		TArray<FName> Moves = ControlledCreature->GetAvailableMoves();
+		SelectedMoveIndex = (SelectedMoveIndex + Moves.Num() - 1) % Moves.Num();
+		UE_LOG(General, Log, TEXT("Selected Move is : %s"), *Moves[SelectedMoveIndex].ToString());
+	}
+}
+
+void ACreaturePlayerController::NextMove()
+{
+	ABaseCreature* ControlledCreature = Cast<ABaseCreature>(GetPawn());
+	if (ControlledCreature)
+	{
+		TArray<FName> Moves = ControlledCreature->GetAvailableMoves();
+		SelectedMoveIndex = (SelectedMoveIndex + 1) % Moves.Num();
+		UE_LOG(General, Log, TEXT("Selected Move is : %s"), *Moves[SelectedMoveIndex].ToString());
+	}
+}
+
+ABaseCreature* ACreaturePlayerController::GetEnemyCreature()
+{
+	return EnemyCreature;
+}
+
+FName ACreaturePlayerController::GetSelectedMove()
+{
+	ABaseCreature* ControlledCreature = Cast<ABaseCreature>(GetPawn());
+	if (ControlledCreature)
+	{
+		return ControlledCreature->GetAvailableMoves()[SelectedMoveIndex];
+	}
+	else return FName("");
 }
