@@ -155,7 +155,7 @@ void ACreatureAIController::UnPossess()
 	if (IsLeader())
 	{
 		// Tell all followers that you have relinquished leadership
-		for (auto& Follower : Followers)
+		for (ACreatureAIController* Follower : Followers)
 		{
 			Follower->Notify(ECommRequests::RelinquishLeadership, this);
 		}
@@ -384,6 +384,9 @@ void ACreatureAIController::AllowSubjugation()
 
 void ACreatureAIController::RememberCreature(ABaseCreature* Creature)
 {
+	if (Creature->IsPendingKill())
+		return;
+
 	// Only sense creatures while not in battle
 	if (Blackboard->GetValueAsEnum(FName("State")) != (uint8)ECreatureBehaviorStates::Battle)
 	{

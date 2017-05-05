@@ -237,6 +237,7 @@ void ACreaturePlayerController::Death_Implementation()
 			Controller->Execute_EndBattle(EnemyController);
 		}
 	}
+	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit);
 }
 
 void ACreaturePlayerController::Possessed_Implementation()
