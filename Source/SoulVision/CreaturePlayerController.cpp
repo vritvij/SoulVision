@@ -106,45 +106,56 @@ void ACreaturePlayerController::Possession()
 		// Execute trace
 		bool bHitSomething = GetWorld()->SweepSingleByChannel(HitResult, StartLocation, EndLocation, FQuat::FQuat(), ECollisionChannel::ECC_Visibility, CollisionShape, CollisionParams);
 
+		UE_LOG(General, Log, TEXT("Possession Trace %s"), bHitSomething ? TEXT("Hit") : TEXT("Missed"));
+
 		// Check if something was hit
 		if (bHitSomething)
 		{
+			UE_LOG(General, Log, TEXT("Possession Target : %s"), *GetDebugName(HitResult.GetActor()));
+
 			// Only possess creatures
 			ABaseCreature* OtherCreature = Cast<ABaseCreature>(HitResult.GetActor());
 
 			if (OtherCreature)
 			{
-				// If we are in battle with the creature
-				if (InBattle() && EnemyCreature == OtherCreature)
+				// If we are not in battle, start one with the creature
+				if (!InBattle())
 				{
-					// Check possibility of possession
-					int32 SuccessfulTries;
-					if (USoulVisionFunctionLibrary::CanPossess(OtherCreature->Base, 3, SuccessfulTries))
-					{
-						float TweenTime = 0.75f;
-
-						// Smoothly blend camera view targets between the creatures
-						SetViewTargetWithBlend(OtherCreature, TweenTime);
-
-						PossessionTweenDelegate.BindUFunction(this, FName("OnPossessionAnimationComplete"), OtherCreature);
-
-						GetWorldTimerManager().SetTimer(PossessionTweenTimer, PossessionTweenDelegate, TweenTime, false);
-					}
-					else {
-						UE_LOG(General, Log, TEXT("Possession Failed"));
-					}
-				}
-				else if(!InBattle())
-				{
-					// If we are not in battle, start one with the creature
+					UE_LOG(General, Log, TEXT("Possession Failed because creature not in battle, attempting to start battle"));
 
 					ABaseCreature* ControlledCreature = Cast<ABaseCreature>(GetPawn());
 					AController* OtherController = OtherCreature->GetController();
-					
+
 					IBattleInterface* Controller = Cast<IBattleInterface>(OtherController);
 					if (Controller && ControlledCreature && (Controller->Execute_StartBattle(OtherController, this, ControlledCreature)))
 					{
 						StartBattle(OtherController, OtherCreature);
+					}
+				}
+
+				// Check possibility of possession
+				int32 SuccessfulTries;
+				if (USoulVisionFunctionLibrary::CanPossess(OtherCreature->Base, 3, SuccessfulTries))
+				{
+					float TweenTime = 0.75f;
+
+					// Smoothly blend camera view targets between the creatures
+					SetViewTargetWithBlend(OtherCreature, TweenTime);
+
+					PossessionTweenDelegate.BindUFunction(this, FName("OnPossessionAnimationComplete"), OtherCreature);
+
+					GetWorldTimerManager().SetTimer(PossessionTweenTimer, PossessionTweenDelegate, TweenTime, false);
+
+					if (GEngine)
+					{
+						GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Yellow, TEXT("Possession Successful!"));
+					}
+				}
+				else {
+					UE_LOG(General, Log, TEXT("Possession Failed"));
+					if (GEngine)
+					{
+						GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Yellow, TEXT("Possession Failed!"));
 					}
 				}
 			}
@@ -157,7 +168,10 @@ void ACreaturePlayerController::OnPossessionAnimationComplete(ABaseCreature* Oth
 	SelectedMoveIndex = 0;
 
 	AController* OtherController = OtherCreature->GetController();
-	OtherController->Possess(GetPawn());
+	if (OtherController)
+	{
+		OtherController->Possess(GetPawn());
+	}
 
 	IBattleInterface* Controller = Cast<IBattleInterface>(OtherController);
 	if (Controller)
@@ -167,6 +181,8 @@ void ACreaturePlayerController::OnPossessionAnimationComplete(ABaseCreature* Oth
 
 	// Possess other creature
 	this->Possess(OtherCreature);
+
+	UE_LOG(General, Log, TEXT("Possession Successful"));
 }
 
 void ACreaturePlayerController::Attack()

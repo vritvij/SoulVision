@@ -94,6 +94,13 @@ void ACreatureAIController::Tick(float DeltaSeconds)
 		// Request to battle other species every tick
 		for (ABaseCreature* Creature : CreatureSet)
 		{
+			if (!Creature || Creature->IsPendingKill())
+			{
+				UE_LOG(General, Log, TEXT("A creature is destroyed or pending kill"));
+				CreatureSet.Remove(Creature);
+				break;
+			}
+
 			// Challenge creatures not of the same species
 			if (!isSameSpecies(Creature))
 			{
